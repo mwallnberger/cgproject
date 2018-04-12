@@ -1,0 +1,19 @@
+Martin:
+- Live Server
+- Panzer designen
+
+
+Michael:
+- Boden
+- Soldaten
+
+
+
+Ideen:
+- Granaten
+- Bäume
+- Soldaten hinterm Busch
+
+- Rauch mittels Billboard animieren.
+- Heigthmap wird dauf Boden gelegt.
+- Multi-Texturing (für Weg auf Gelände)
