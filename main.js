@@ -265,6 +265,50 @@ function renderTank(sceneMatrix, viewMatrix) {
   setUpModelViewMatrix(viewMatrix, sceneMatrix);
   renderCube();
 
+  // dunkelgruen
+  gl.uniform4f(fColorLocation, 0, 0.168, 0, 1);
+
+  //l Bein
+  sceneMatrix = originSceneMatrix;
+  sceneMatrix = matrixMultiply(sceneMatrix, makeTranslationMatrix(1.0, 1.0, 0));
+  sceneMatrix = matrixMultiply(sceneMatrix, makeScaleMatrix(0.2,0.5,0.2));
+  setUpModelViewMatrix(viewMatrix, sceneMatrix);
+  renderCube();
+
+  //r Bein
+  sceneMatrix = originSceneMatrix;
+  sceneMatrix = matrixMultiply(sceneMatrix, makeTranslationMatrix(0.8, 1.0, 0));
+  sceneMatrix = matrixMultiply(sceneMatrix, makeScaleMatrix(0.2,0.5,0.2));
+  setUpModelViewMatrix(viewMatrix, sceneMatrix);
+  renderCube();
+
+  // Rumpf
+  sceneMatrix = originSceneMatrix;
+  sceneMatrix = matrixMultiply(sceneMatrix, makeTranslationMatrix(0.9, 1.3, 0));
+  sceneMatrix = matrixMultiply(sceneMatrix, makeScaleMatrix(0.6,0.5,0.2));
+  setUpModelViewMatrix(viewMatrix, sceneMatrix);
+  renderCube();
+
+  // Kopf
+  sceneMatrix = originSceneMatrix;
+  sceneMatrix = matrixMultiply(sceneMatrix, makeTranslationMatrix(0.9, 1.5, 0));
+  sceneMatrix = matrixMultiply(sceneMatrix, makeScaleMatrix(0.2,0.2,0.2));
+  setUpModelViewMatrix(viewMatrix, sceneMatrix);
+  renderCube();
+
+  //r Arm
+  sceneMatrix = originSceneMatrix;
+  sceneMatrix = matrixMultiply(sceneMatrix, makeTranslationMatrix(1.1, 1.4, -0.1));
+  sceneMatrix = matrixMultiply(sceneMatrix, makeScaleMatrix(0.2,0.2,0.4));
+  setUpModelViewMatrix(viewMatrix, sceneMatrix);
+  renderCube();
+
+  //l Arm
+  sceneMatrix = originSceneMatrix;
+  sceneMatrix = matrixMultiply(sceneMatrix, makeTranslationMatrix(0.7, 1.4, -0.1));
+  sceneMatrix = matrixMultiply(sceneMatrix, makeScaleMatrix(0.2,0.2,0.4));
+  setUpModelViewMatrix(viewMatrix, sceneMatrix);
+  renderCube();
 }
 
 function calculateViewMatrix(viewMatrix) {
