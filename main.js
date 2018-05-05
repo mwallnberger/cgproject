@@ -1,21 +1,28 @@
-//the OpenGL context
-var gl = null,
-program = null;
+/**
+ * Created by Marc Streit on 01.04.2016.
+ */
 
-var canvasWidth = 1200;
-var canvasHeight = 600;
+//the OpenGL context
+var gl = null;
+//our shader program
+var shaderProgram = null;
+
+var canvasWidth = 800;
+var canvasHeight = 800;
 var aspectRatio = canvasWidth / canvasHeight;
+
+//rendering context
+var context;
 
 //camera and projection settings
 var animatedAngle = 0;
 var fieldOfViewInRadians = convertDegreeToRadians(30);
 
-var defaultProjectionMatrix = makeOrthographicProjectionMatrix(-1,1,-1,1,-10,10);
+var tankTransformationNode;
+var tankHeadTransformationNode;
 
-var modelViewLocation;
-var positionLocation;
-var colorLocation;
-var projectionLocation;
+var soldierTransformationNode;
+var soldierHeadTransformationNode;
 
 //links to buffer stored on the GPU
 var quadVertexBuffer, quadColorBuffer;
@@ -37,7 +44,6 @@ var quadColors = new Float32Array([
     0, 1, 0, 1,
     0, 0, 0, 1]);
 
-
 var s = 0.3; //size of cube
 var cubeVertices = new Float32Array([
    -s,-s,-s, s,-s,-s, s, s,-s, -s, s,-s,
@@ -47,16 +53,14 @@ var cubeVertices = new Float32Array([
    -s,-s,-s, -s,-s, s, s,-s, s, s,-s,-s,
    -s, s,-s, -s, s, s, s, s, s, s, s,-s,
 ]);
-var r = 0.18;
-var g = 0.44;
-var b = 0.86;
+
 var cubeColors = new Float32Array([
-   r,g,b,  r,g,b,  r,g,b,  r,g,b,
-   r,g,b,  r,g,b,  r,g,b,  r,g,b,
-   r,g,b,  r,g,b,  r,g,b,  r,g,b,
-   r,g,b,  r,g,b,  r,g,b,  r,g,b,
-   r,g,b,  r,g,b,  r,g,b,  r,g,b,
-   r,g,b,  r,g,b,  r,g,b,  r,g,b
+   0,1,1, 0,1,1, 0,1,1, 0,1,1,
+   1,0,1, 1,0,1, 1,0,1, 1,0,1,
+   1,0,0, 1,0,0, 1,0,0, 1,0,0,
+   0,0,1, 0,0,1, 0,0,1, 0,0,1,
+   1,1,0, 1,1,0, 1,1,0, 1,1,0,
+   0,1,0, 0,1,0, 0,1,0, 0,1,0
 ]);
 
 var cubeIndices =  new Float32Array([
@@ -68,11 +72,12 @@ var cubeIndices =  new Float32Array([
    20,21,22, 20,22,23
 ]);
 
-
 //load the shader resources using a utility function
 loadResources({
-  vs: 'shader/empty.vs.glsl',
-  fs: 'shader/empty.fs.glsl'
+  vs: 'shader/simple.vs.glsl',
+  fs: 'shader/simple.fs.glsl',
+  //TASK 5-3
+  staticcolorvs: 'shader/static_color.vs.glsl'
 }).then(function (resources /*an object containing our keys with the loaded resources*/) {
   init(resources);
 
@@ -84,26 +89,36 @@ loadResources({
  * initializes OpenGL context, compile shader, and load buffers
  */
 function init(resources) {
+
   //create a GL context
   gl = createContext(canvasWidth, canvasHeight);
 
   //in WebGL / OpenGL3 we have to create and use our own shaders for the programmable pipeline
   //create the shader program
-  program = createProgram(gl, resources.vs, resources.fs);
-
-  modelViewLocation = gl.getUniformLocation(program, 'u_modelView');
-  projectionLocation = gl.getUniformLocation(program, 'u_projection');
-
-  //we are looking up the internal location after compilation of the shader program given the name of the attribute
-  positionLocation = gl.getAttribLocation(program, "a_position");
-  //same for color
-  colorLocation = gl.getAttribLocation(program, "a_color");
+  shaderProgram = createProgram(gl, resources.vs, resources.fs);
 
   //set buffers for quad
   initQuadBuffer();
+  //set buffers for cube
   initCubeBuffer();
 
-  // TASK 8-1 //set buffers for cube
+  //create scenegraph
+  rootNode = new SceneGraphNode();
+
+  var quadTransformationMatrix = glm.rotateX(90);
+  quadTransformationMatrix = mat4.multiply(mat4.create(), quadTransformationMatrix, glm.translate(0.0,-0.5,0));
+  quadTransformationMatrix = mat4.multiply(mat4.create(), quadTransformationMatrix, glm.scale(5.5,5.5,5.5));
+
+  var transformationNode = new TransformationSceneGraphNode(quadTransformationMatrix);
+  rootNode.append(transformationNode);
+
+  var staticColorShaderNode = new ShaderSceneGraphNode(createProgram(gl, resources.staticcolorvs, resources.fs));
+  transformationNode.append(staticColorShaderNode);
+  var quadNode = new QuadRenderNode();
+  staticColorShaderNode.append(quadNode);
+
+  createTank(rootNode);
+  createSoldier(rootNode);
 }
 
 function initQuadBuffer() {
@@ -135,512 +150,413 @@ function initCubeBuffer() {
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cubeIndices), gl.STATIC_DRAW);
 }
 
+function createTank(rootNode) {
+
+//  var tankTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateY(animatedAngle/2));
+  var tankTransformationMatrix = mat4.create();
+  tankTransformationNode = new TransformationSceneGraphNode(tankTransformationMatrix);
+  rootNode.append(tankTransformationNode);
+
+  //Drehbares Teil Transformation
+  var tankHeadTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateY(animatedAngle));
+  tankHeadTransformationMatrix = mat4.multiply(mat4.create(), tankHeadTransformationMatrix, glm.translate(1,1,0));
+  tankHeadTransformationMatrix = mat4.multiply(mat4.create(), tankHeadTransformationMatrix, glm.scale(5,1,1));
+  tankHeadTransformationNode = new TransformationSceneGraphNode(tankHeadTransformationMatrix);
+  tankTransformationNode.append(tankHeadTransformationNode);
+
+  //DrehbaresTeil Body
+  bodyFeuerTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(0.1,0.6,0));
+  bodyFeuerTransformationMatrix = mat4.multiply(mat4.create(), bodyFeuerTransformationMatrix, glm.scale(1,0.5,0.8));
+  var bodyFeuerTransformationNode = new TransformationSceneGraphNode(bodyFeuerTransformationMatrix);
+  tankHeadTransformationNode.append(bodyFeuerTransformationNode);
+  cubeNode = new CubeRenderNode([0.18, 0.44, 0.86]);
+  bodyFeuerTransformationNode.append(cubeNode);
+
+  //Feuerrohr
+  var feuerrohrTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateZ(-7));
+  feuerrohrTransformationMatrix = mat4.multiply(mat4.create(), feuerrohrTransformationMatrix, glm.translate(-0.6,0.6,0));
+  feuerrohrTransformationMatrix = mat4.multiply(mat4.create(), feuerrohrTransformationMatrix, glm.scale(1.5,0.1,0.1));
+  var feuerrohrTransformationNode = new TransformationSceneGraphNode(feuerrohrTransformationMatrix);
+  tankHeadTransformationNode.append(feuerrohrTransformationNode);
+  cubeNode = new CubeRenderNode([1, 0.2, 0.3]);
+  feuerrohrTransformationNode.append(cubeNode);
+
+  //Body
+  var bodyTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(0,0.3,0));
+  bodyTransformationMatrix = mat4.multiply(mat4.create(), bodyTransformationMatrix, glm.scale(2,0.6,1));
+  var bodyTransformationNode = new TransformationSceneGraphNode(bodyTransformationMatrix);
+  tankTransformationNode.append(bodyTransformationNode);
+  cubeNode = new CubeRenderNode([0.18, 0.44, 0.86]);
+  bodyTransformationNode.append(cubeNode);
+
+  var leftKetteTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(0,0.0,s*1));
+  leftKetteTransformationMatrix = mat4.multiply(mat4.create(), leftKetteTransformationMatrix, glm.scale(2.5,1,0.5));
+  var leftKetteTransformationNode = new TransformationSceneGraphNode(leftKetteTransformationMatrix);
+  tankTransformationNode.append(leftKetteTransformationNode);
+  cubeNode = new CubeRenderNode([0, 0,0]);
+  leftKetteTransformationNode.append(cubeNode);
+
+  var rightKetteTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(0,0.0,-s*1));
+  rightKetteTransformationMatrix = mat4.multiply(mat4.create(), rightKetteTransformationMatrix, glm.scale(2.5,1,0.5));
+  var rightKetteTransformationNode = new TransformationSceneGraphNode(rightKetteTransformationMatrix);
+  tankTransformationNode.append(rightKetteTransformationNode);
+  cubeNode = new CubeRenderNode([0, 0,0]);
+  rightKetteTransformationNode.append(cubeNode);
+
+}
+
+function createSoldier(rootNode) {
+
+//  var tankTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateY(animatedAngle/2));
+  var soldierTransformationMatrix = mat4.create();
+  soldierTransformationNode = new TransformationSceneGraphNode(soldierTransformationMatrix);
+  rootNode.append(soldierTransformationNode);
+
+  // Kopf
+  var soldierHeadTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateY(animatedAngle));
+  soldierHeadTransformationMatrix = mat4.multiply(mat4.create(), soldierHeadTransformationMatrix, glm.translate(0,1.0,0));
+  soldierHeadTransformationMatrix = mat4.multiply(mat4.create(), soldierHeadTransformationMatrix, glm.scale(0.2,0.2,0.2));
+  soldierHeadTransformationNode = new TransformationSceneGraphNode(soldierHeadTransformationMatrix);
+  soldierTransformationNode.append(soldierHeadTransformationNode);
+  cubeNode = new CubeRenderNode([0, 0.168, 0]);
+  soldierHeadTransformationNode.append(cubeNode);
+
+  //Rumpf
+  var rumpfTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(0,0.8,0));
+  rumpfTransformationMatrix = mat4.multiply(mat4.create(), rumpfTransformationMatrix, glm.scale(0.6,0.5,0.2));
+  var rumpfTransformationNode = new TransformationSceneGraphNode(rumpfTransformationMatrix);
+  soldierTransformationNode.append(rumpfTransformationNode);
+  cubeNode = new CubeRenderNode([0, 0.168, 0]);
+  rumpfTransformationNode.append(cubeNode);
+
+
+  //Bein l
+  var lBeinTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(0.1,0.5,0));
+  lBeinTransformationMatrix = mat4.multiply(mat4.create(), lBeinTransformationMatrix, glm.scale(0.2,0.5,0.2));
+  var lBeinTransformationNode = new TransformationSceneGraphNode(lBeinTransformationMatrix);
+  soldierTransformationNode.append(lBeinTransformationNode);
+  cubeNode = new CubeRenderNode([0, 0.168, 0]);
+  lBeinTransformationNode.append(cubeNode);
+
+  //Bein r
+  var rBeinTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(-0.1,0.5,0));
+  rBeinTransformationMatrix = mat4.multiply(mat4.create(), rBeinTransformationMatrix, glm.scale(0.2,0.5,0.2));
+  var rBeinTransformationNode = new TransformationSceneGraphNode(rBeinTransformationMatrix);
+  soldierTransformationNode.append(rBeinTransformationNode);
+  cubeNode = new CubeRenderNode([0, 0.168, 0]);
+  rBeinTransformationNode.append(cubeNode);
+
+  //Arm r
+  var rArmTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(0.2,0.8,0));
+  rArmTransformationMatrix = mat4.multiply(mat4.create(), rArmTransformationMatrix, glm.scale(0.2,0.5,0.2));
+  var rArmTransformationNode = new TransformationSceneGraphNode(rArmTransformationMatrix);
+  soldierTransformationNode.append(rArmTransformationNode);
+  cubeNode = new CubeRenderNode([0, 0.168, 0]);
+  rArmTransformationNode.append(cubeNode);
+
+  //Arm l
+  var lArmTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(-0.2,0.8,0));
+  lArmTransformationMatrix = mat4.multiply(mat4.create(), lArmTransformationMatrix, glm.scale(0.2,0.5,0.2));
+  var lArmTransformationNode = new TransformationSceneGraphNode(lArmTransformationMatrix);
+  soldierTransformationNode.append(lArmTransformationNode);
+  cubeNode = new CubeRenderNode([0, 0.168, 0]);
+  lArmTransformationNode.append(cubeNode);
+
+}
+
 /**
  * render one frame
  */
 function render(timeInMilliseconds) {
 
+  //set background color to light gray
   gl.clearColor(0.9, 0.9, 0.9, 1.0);
   //clear the buffer
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  //enable depth test to let objects in front occluse objects further away
   gl.enable(gl.DEPTH_TEST);
 
-  //enable depth test to let objects in front occluse objects further away
-  gl.useProgram(program);
+  //TASK 1-1
+  gl.enable(gl.BLEND);
+  //TASK 1-2
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-  var projectionMatrix = defaultProjectionMatrix;
+  //activate this shader program
+  gl.useProgram(shaderProgram);
 
-  // TASK 7
+  //update transformation of tank for rotation animation
+  var tankTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateY(animatedAngle/2));
+  tankTransformationMatrix = mat4.multiply(mat4.create(), tankTransformationMatrix, glm.scale(0.4,0.4,0.4));
+  tankTransformationNode.setMatrix(tankTransformationMatrix);
 
-  projectionMatrix = makePerspectiveProjectionMatrix(fieldOfViewInRadians, aspectRatio,1,10);
+  //rotate  tankHead
+  var tankHeadTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateY(animatedAngle/4));
+  tankHeadTransformationNode.setMatrix(tankHeadTransformationMatrix);
 
-  gl.uniformMatrix4fv(projectionLocation, false, projectionMatrix);
 
-  var sceneMatrix = makeIdentityMatrix();
-  var viewMatrix = calculateViewMatrix(makeIdentityMatrix());
-  setUpModelViewMatrix(viewMatrix, sceneMatrix);
+  //update transformation of soldier for rotation animation
+  var soldierTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateY(30));
+  soldierTransformationMatrix = mat4.multiply(mat4.create(), soldierTransformationMatrix, glm.scale(1,1,1));
+  soldierTransformationMatrix = mat4.multiply(mat4.create(), soldierTransformationMatrix, glm.translate(-0.8,0.0,0));
+  soldierTransformationNode.setMatrix(soldierTransformationMatrix);
 
-  renderQuad(sceneMatrix, viewMatrix);
-  renderTank(sceneMatrix,viewMatrix);
-  // TASK 8-2
+  //update transformation of soldier for rotation animation
+
+  var soldierHeadTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateY(animatedAngle/4));
+  soldierHeadTransformationMatrix = mat4.multiply(mat4.create(), soldierHeadTransformationMatrix, glm.translate(0,1.0,0));
+  soldierHeadTransformationMatrix = mat4.multiply(mat4.create(), soldierHeadTransformationMatrix, glm.scale(0.2,0.2,0.2));
+  soldierHeadTransformationNode.setMatrix(soldierHeadTransformationMatrix);
+
+
+
+
+  context = createSceneGraphContext(gl, shaderProgram);
+
+  rootNode.render(context);
 
   //request another render call as soon as possible
   requestAnimationFrame(render);
 
+  //animate based on elapsed time
   animatedAngle = timeInMilliseconds/10;
 }
-
-function renderQuad(sceneMatrix, viewMatrix) {
-
-  //TASK 2-2 and TASK 3 and TASK 4
-  sceneMatrix = matrixMultiply(sceneMatrix, makeXRotationMatrix(convertDegreeToRadians(90)));
-  sceneMatrix = matrixMultiply(sceneMatrix,makeTranslationMatrix(0.0,-0.5,0));
-  sceneMatrix = matrixMultiply(sceneMatrix,makeScaleMatrix(2,2,1));
-  setUpModelViewMatrix(viewMatrix, sceneMatrix);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, quadVertexBuffer);
-  gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
-
-  //enable this vertex attribute
-  gl.enableVertexAttribArray(positionLocation);
-
-  //const colorLocation = gl.getAttribLocation(shaderProgram, 'a_color');
-  //gl.enableVertexAttribArray(colorLocation);
-  gl.bindBuffer(gl.ARRAY_BUFFER, quadColorBuffer);
-  gl.vertexAttribPointer(colorLocation, 4, gl.FLOAT, false, 0, 0);
-  gl.enableVertexAttribArray(colorLocation);
-
-  var fColorLocation = gl.getUniformLocation(program, "fColor");
-  gl.uniform4f(fColorLocation, 0.1, 0.8, 0.2, 1);
-
-  // draw the bound data as 6 vertices = 2 triangles starting at index 0
-  gl.drawArrays(gl.TRIANGLES, 0, 6);
-}
-
-
 
 function renderCube() {
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeIndexBuffer);
   gl.drawElements(gl.TRIANGLES, cubeIndices.length, gl.UNSIGNED_SHORT, 0); //LINE_STRIP
 }
 
-function renderTank(sceneMatrix, viewMatrix) {
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexBuffer);
-  gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false,0,0) ;
-  gl.enableVertexAttribArray(positionLocation);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, cubeColorBuffer);
-  gl.vertexAttribPointer(colorLocation, 3, gl.FLOAT, false,0,0) ;
-  gl.enableVertexAttribArray(colorLocation);
-
-  var fColorLocation = gl.getUniformLocation(program, "fColor");
-  gl.uniform4f(fColorLocation, 0.18, 0.44, 0.86, 1);
-
- sceneMatrix = matrixMultiply(sceneMatrix, makeYRotationMatrix(convertDegreeToRadians(animatedAngle)));
-  //sceneMatrix = matrixMultiply(sceneMatrix, makeTranslationMatrix(0.3,0.9,0));
-
-  // store current sceneMatrix in originSceneMatrix, so it can be restored
-  var originSceneMatrix = sceneMatrix;
-
-  //body;
-  //sceneMatrix = matrixMultiply(sceneMatrix, makeYRotationMatrix(convertDegreeToRadians(animatedAngle)));
-  sceneMatrix = matrixMultiply(sceneMatrix, makeTranslationMatrix(0,0.3,0));
-  sceneMatrix = matrixMultiply(sceneMatrix, makeScaleMatrix(2,0.6,1));
-  setUpModelViewMatrix(viewMatrix, sceneMatrix);
-  renderCube();
-
-  gl.uniform4f(fColorLocation, 0.2, 0.2, 0.2, 1);
-
-  //left kette
-  sceneMatrix = originSceneMatrix;
-  sceneMatrix = matrixMultiply(sceneMatrix, makeTranslationMatrix(0,0,s*1));
-  sceneMatrix = matrixMultiply(sceneMatrix, makeScaleMatrix(2.5,1,0.5));
-  setUpModelViewMatrix(viewMatrix, sceneMatrix);
-  renderCube();
-
-  //right kette
-  sceneMatrix = originSceneMatrix;
-  sceneMatrix = matrixMultiply(sceneMatrix, makeTranslationMatrix(0,0,-s*1));
-  sceneMatrix = matrixMultiply(sceneMatrix, makeScaleMatrix(2.5,1,0.5));
-  setUpModelViewMatrix(viewMatrix, sceneMatrix);
-  renderCube();
-
-  gl.uniform4f(fColorLocation, 0.18, 0.44, 0.86, 1);
-
-  //drehbares teil am panzer
-  sceneMatrix = originSceneMatrix;
-  sceneMatrix = matrixMultiply(sceneMatrix, makeTranslationMatrix(0.1,0.6,0));
-  sceneMatrix = matrixMultiply(sceneMatrix, makeScaleMatrix(1,0.5,0.8));
-  setUpModelViewMatrix(viewMatrix, sceneMatrix);
-  renderCube();
-
-  gl.uniform4f(fColorLocation, 1, 0.2, 0.3, 1);
-
-  //feuerrohr
-  sceneMatrix = originSceneMatrix;
-  sceneMatrix = matrixMultiply(sceneMatrix, makeZRotationMatrix(convertDegreeToRadians(-7)));
-  sceneMatrix = matrixMultiply(sceneMatrix, makeTranslationMatrix(-0.6,0.6,0));
-  sceneMatrix = matrixMultiply(sceneMatrix, makeScaleMatrix(1.5,0.1,0.1));
-  setUpModelViewMatrix(viewMatrix, sceneMatrix);
-  renderCube();
-
-  // dunkelgruen
-  gl.uniform4f(fColorLocation, 0, 0.168, 0, 1);
-
-  //l Bein
-  sceneMatrix = originSceneMatrix;
-  sceneMatrix = matrixMultiply(sceneMatrix, makeTranslationMatrix(1.0, 1.0, 0));
-  sceneMatrix = matrixMultiply(sceneMatrix, makeScaleMatrix(0.2,0.5,0.2));
-  setUpModelViewMatrix(viewMatrix, sceneMatrix);
-  renderCube();
-
-  //r Bein
-  sceneMatrix = originSceneMatrix;
-  sceneMatrix = matrixMultiply(sceneMatrix, makeTranslationMatrix(0.8, 1.0, 0));
-  sceneMatrix = matrixMultiply(sceneMatrix, makeScaleMatrix(0.2,0.5,0.2));
-  setUpModelViewMatrix(viewMatrix, sceneMatrix);
-  renderCube();
-
-  // Rumpf
-  sceneMatrix = originSceneMatrix;
-  sceneMatrix = matrixMultiply(sceneMatrix, makeTranslationMatrix(0.9, 1.3, 0));
-  sceneMatrix = matrixMultiply(sceneMatrix, makeScaleMatrix(0.6,0.5,0.2));
-  setUpModelViewMatrix(viewMatrix, sceneMatrix);
-  renderCube();
-
-  // Kopf
-  sceneMatrix = originSceneMatrix;
-  sceneMatrix = matrixMultiply(sceneMatrix, makeTranslationMatrix(0.9, 1.5, 0));
-  sceneMatrix = matrixMultiply(sceneMatrix, makeScaleMatrix(0.2,0.2,0.2));
-  setUpModelViewMatrix(viewMatrix, sceneMatrix);
-  renderCube();
-
-  //r Arm
-  sceneMatrix = originSceneMatrix;
-  sceneMatrix = matrixMultiply(sceneMatrix, makeTranslationMatrix(1.1, 1.4, -0.1));
-  sceneMatrix = matrixMultiply(sceneMatrix, makeScaleMatrix(0.2,0.2,0.4));
-  setUpModelViewMatrix(viewMatrix, sceneMatrix);
-  renderCube();
-
-  //l Arm
-  sceneMatrix = originSceneMatrix;
-  sceneMatrix = matrixMultiply(sceneMatrix, makeTranslationMatrix(0.7, 1.4, -0.1));
-  sceneMatrix = matrixMultiply(sceneMatrix, makeScaleMatrix(0.2,0.2,0.4));
-  setUpModelViewMatrix(viewMatrix, sceneMatrix);
-  renderCube();
+function setUpModelViewMatrix(sceneMatrix, viewMatrix) {
+  var modelViewMatrix = mat4.multiply(mat4.create(), viewMatrix, sceneMatrix);
+  gl.uniformMatrix4fv(gl.getUniformLocation(context.shader, 'u_modelView'), false, modelViewMatrix);
 }
 
-function calculateViewMatrix(viewMatrix) {
+/**
+ * returns a new rendering context
+ * @param gl the gl context
+ * @param projectionMatrix optional projection Matrix
+ * @returns {ISceneGraphContext}
+ */
+function createSceneGraphContext(gl, shader) {
+
+  //create a default projection matrix
+  projectionMatrix = mat4.perspective(mat4.create(), fieldOfViewInRadians, aspectRatio, 0.01, 10);
+  //set projection matrix
+  gl.uniformMatrix4fv(gl.getUniformLocation(shader, 'u_projection'), false, projectionMatrix);
+
+  return {
+    gl: gl,
+    sceneMatrix: mat4.create(),
+    viewMatrix: calculateViewMatrix(),
+    projectionMatrix: projectionMatrix,
+    shader: shader
+  };
+}
+
+function calculateViewMatrix() {
   //compute the camera's matrix
-  // TASK 5
-  viewMatrix = lookAt(0,3,5,0,0,0,0,1,0);
+  var eye = [0,3,5];
+  var center = [0,0,0];
+  var up = [0,1,0];
+  viewMatrix = mat4.lookAt(mat4.create(), eye, center, up);
   return viewMatrix;
 }
 
-function setUpModelViewMatrix(viewMatrix, sceneMatrix) {
-
-  var modelViewMatrix = matrixMultiply(viewMatrix, sceneMatrix );
-  gl.uniformMatrix4fv(modelViewLocation, false, modelViewMatrix);
-}
-
-// Helper function taken from webglfundamentals.org tutorials
-// Note that OpenGL expects the transposed matrix (when compared to slide)
-function makeTranslationMatrix(tx, ty, tz) {
-  return [
-     1,  0,  0,  0,
-     0,  1,  0,  0,
-     0,  0,  1,  0,
-     tx, ty, tz, 1
-  ];
-}
-
-// Helper function taken from webglfundamentals.org tutorials
-// Note that OpenGL expects the transposed matrix (when compared to slide)
-function makeXRotationMatrix(angleInRadians) {
-  var c = Math.cos(angleInRadians);
-  var s = Math.sin(angleInRadians);
-
-  return [
-    1, 0, 0, 0,
-    0, c, s, 0,
-    0, -s, c, 0,
-    0, 0, 0, 1
-  ];
-};
-
-// Helper function taken from webglfundamentals.org tutorials
-// Note that OpenGL expects the transposed matrix (when compared to slide)
-function makeYRotationMatrix(angleInRadians) {
-  var c = Math.cos(angleInRadians);
-  var s = Math.sin(angleInRadians);
-
-  return [
-    c, 0, -s, 0,
-    0, 1, 0, 0,
-    s, 0, c, 0,
-    0, 0, 0, 1
-  ];
-};
-
-// Helper function taken from webglfundamentals.org tutorials
-// Note that OpenGL expects the transposed matrix (when compared to slide)
-function makeZRotationMatrix(angleInRadians) {
-  var c = Math.cos(angleInRadians);
-  var s = Math.sin(angleInRadians);
-
-  return [
-     c, s, 0, 0,
-    -s, c, 0, 0,
-     0, 0, 1, 0,
-     0, 0, 0, 1
-  ];
-}
-
-// Helper function taken from webglfundamentals.org tutorials
-// Note that OpenGL expects the transposed matrix (when compared to slide)
-function makeScaleMatrix(sx, sy, sz) {
-  return [
-    sx, 0,  0,  0,
-    0, sy,  0,  0,
-    0,  0, sz,  0,
-    0,  0,  0,  1
-  ];
-}
-
-function makeIdentityMatrix() {
-  return [
-    1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    0, 0, 0, 1
-  ];
-}
-
-// Helper function taken from webglfundamentals.org tutorials
-// Note that OpenGL expects the transposed matrix (when compared to slide)
-function makeOrthographicProjectionMatrix(left, right, bottom, top, near, far) {
-  return [
-     2 / (right-left), 0, 0, 0,
-     0, 2 / (top-bottom), 0, 0,
-     0, 0, -2 / (far-near), 0,
-    -(right+left)/(right-left), -(top+bottom)/(top-bottom), -(far+near)/(far-near), 1
-  ];
-}
-
-// Helper function taken from webglfundamentals.org tutorials
-// Note that OpenGL expects the transposed matrix (when compared to slide)
-function makePerspectiveProjectionMatrix(fieldOfViewInRadians, aspect, near, far) {
-  var f = Math.tan(Math.PI * 0.5 - 0.5 * fieldOfViewInRadians);
-  var rangeInv = 1.0 / (near - far);
-
-  return [
-    f / aspect, 0, 0, 0,
-    0, f, 0, 0,
-    0, 0, (near + far) * rangeInv, -1,
-    0, 0, near * far * rangeInv * 2, 0
-  ];
-};
-
-// Helper function taken from webglfundamentals.org tutorials
-// Note that OpenGL expects the transposed matrix (when compared to slide)
-var matrixMultiply = function(b,a) {
-  var a00 = a[0*4+0];
-  var a01 = a[0*4+1];
-  var a02 = a[0*4+2];
-  var a03 = a[0*4+3];
-  var a10 = a[1*4+0];
-  var a11 = a[1*4+1];
-  var a12 = a[1*4+2];
-  var a13 = a[1*4+3];
-  var a20 = a[2*4+0];
-  var a21 = a[2*4+1];
-  var a22 = a[2*4+2];
-  var a23 = a[2*4+3];
-  var a30 = a[3*4+0];
-  var a31 = a[3*4+1];
-  var a32 = a[3*4+2];
-  var a33 = a[3*4+3];
-  var b00 = b[0*4+0];
-  var b01 = b[0*4+1];
-  var b02 = b[0*4+2];
-  var b03 = b[0*4+3];
-  var b10 = b[1*4+0];
-  var b11 = b[1*4+1];
-  var b12 = b[1*4+2];
-  var b13 = b[1*4+3];
-  var b20 = b[2*4+0];
-  var b21 = b[2*4+1];
-  var b22 = b[2*4+2];
-  var b23 = b[2*4+3];
-  var b30 = b[3*4+0];
-  var b31 = b[3*4+1];
-  var b32 = b[3*4+2];
-  var b33 = b[3*4+3];
-  return [a00 * b00 + a01 * b10 + a02 * b20 + a03 * b30,
-          a00 * b01 + a01 * b11 + a02 * b21 + a03 * b31,
-          a00 * b02 + a01 * b12 + a02 * b22 + a03 * b32,
-          a00 * b03 + a01 * b13 + a02 * b23 + a03 * b33,
-          a10 * b00 + a11 * b10 + a12 * b20 + a13 * b30,
-          a10 * b01 + a11 * b11 + a12 * b21 + a13 * b31,
-          a10 * b02 + a11 * b12 + a12 * b22 + a13 * b32,
-          a10 * b03 + a11 * b13 + a12 * b23 + a13 * b33,
-          a20 * b00 + a21 * b10 + a22 * b20 + a23 * b30,
-          a20 * b01 + a21 * b11 + a22 * b21 + a23 * b31,
-          a20 * b02 + a21 * b12 + a22 * b22 + a23 * b32,
-          a20 * b03 + a21 * b13 + a22 * b23 + a23 * b33,
-          a30 * b00 + a31 * b10 + a32 * b20 + a33 * b30,
-          a30 * b01 + a31 * b11 + a32 * b21 + a33 * b31,
-          a30 * b02 + a31 * b12 + a32 * b22 + a33 * b32,
-          a30 * b03 + a31 * b13 + a32 * b23 + a33 * b33];
-};
-
 /**
-   * Computes the inverse of a matrix.
-   * @param {Matrix4} m matrix to compute inverse of
-   * @param {Matrix4} [dst] optional matrix to store result
-   * @return {Matrix4} dst or a new matrix of none provided
-   * @memberOf module:webgl-3d-math
-   */
-  function makeInverse(m, dst) {
-    dst = dst || new Float32Array(16);
-    var m00 = m[0 * 4 + 0];
-    var m01 = m[0 * 4 + 1];
-    var m02 = m[0 * 4 + 2];
-    var m03 = m[0 * 4 + 3];
-    var m10 = m[1 * 4 + 0];
-    var m11 = m[1 * 4 + 1];
-    var m12 = m[1 * 4 + 2];
-    var m13 = m[1 * 4 + 3];
-    var m20 = m[2 * 4 + 0];
-    var m21 = m[2 * 4 + 1];
-    var m22 = m[2 * 4 + 2];
-    var m23 = m[2 * 4 + 3];
-    var m30 = m[3 * 4 + 0];
-    var m31 = m[3 * 4 + 1];
-    var m32 = m[3 * 4 + 2];
-    var m33 = m[3 * 4 + 3];
-    var tmp_0  = m22 * m33;
-    var tmp_1  = m32 * m23;
-    var tmp_2  = m12 * m33;
-    var tmp_3  = m32 * m13;
-    var tmp_4  = m12 * m23;
-    var tmp_5  = m22 * m13;
-    var tmp_6  = m02 * m33;
-    var tmp_7  = m32 * m03;
-    var tmp_8  = m02 * m23;
-    var tmp_9  = m22 * m03;
-    var tmp_10 = m02 * m13;
-    var tmp_11 = m12 * m03;
-    var tmp_12 = m20 * m31;
-    var tmp_13 = m30 * m21;
-    var tmp_14 = m10 * m31;
-    var tmp_15 = m30 * m11;
-    var tmp_16 = m10 * m21;
-    var tmp_17 = m20 * m11;
-    var tmp_18 = m00 * m31;
-    var tmp_19 = m30 * m01;
-    var tmp_20 = m00 * m21;
-    var tmp_21 = m20 * m01;
-    var tmp_22 = m00 * m11;
-    var tmp_23 = m10 * m01;
+ * base node of the scenegraph
+ */
+class SceneGraphNode {
 
-    var t0 = (tmp_0 * m11 + tmp_3 * m21 + tmp_4 * m31) -
-        (tmp_1 * m11 + tmp_2 * m21 + tmp_5 * m31);
-    var t1 = (tmp_1 * m01 + tmp_6 * m21 + tmp_9 * m31) -
-        (tmp_0 * m01 + tmp_7 * m21 + tmp_8 * m31);
-    var t2 = (tmp_2 * m01 + tmp_7 * m11 + tmp_10 * m31) -
-        (tmp_3 * m01 + tmp_6 * m11 + tmp_11 * m31);
-    var t3 = (tmp_5 * m01 + tmp_8 * m11 + tmp_11 * m21) -
-        (tmp_4 * m01 + tmp_9 * m11 + tmp_10 * m21);
-
-    var d = 1.0 / (m00 * t0 + m10 * t1 + m20 * t2 + m30 * t3);
-
-    dst[0] = d * t0;
-    dst[1] = d * t1;
-    dst[2] = d * t2;
-    dst[3] = d * t3;
-    dst[4] = d * ((tmp_1 * m10 + tmp_2 * m20 + tmp_5 * m30) -
-          (tmp_0 * m10 + tmp_3 * m20 + tmp_4 * m30));
-    dst[5] = d * ((tmp_0 * m00 + tmp_7 * m20 + tmp_8 * m30) -
-          (tmp_1 * m00 + tmp_6 * m20 + tmp_9 * m30));
-    dst[6] = d * ((tmp_3 * m00 + tmp_6 * m10 + tmp_11 * m30) -
-          (tmp_2 * m00 + tmp_7 * m10 + tmp_10 * m30));
-    dst[7] = d * ((tmp_4 * m00 + tmp_9 * m10 + tmp_10 * m20) -
-          (tmp_5 * m00 + tmp_8 * m10 + tmp_11 * m20));
-    dst[8] = d * ((tmp_12 * m13 + tmp_15 * m23 + tmp_16 * m33) -
-          (tmp_13 * m13 + tmp_14 * m23 + tmp_17 * m33));
-    dst[9] = d * ((tmp_13 * m03 + tmp_18 * m23 + tmp_21 * m33) -
-          (tmp_12 * m03 + tmp_19 * m23 + tmp_20 * m33));
-    dst[10] = d * ((tmp_14 * m03 + tmp_19 * m13 + tmp_22 * m33) -
-          (tmp_15 * m03 + tmp_18 * m13 + tmp_23 * m33));
-    dst[11] = d * ((tmp_17 * m03 + tmp_20 * m13 + tmp_23 * m23) -
-          (tmp_16 * m03 + tmp_21 * m13 + tmp_22 * m23));
-    dst[12] = d * ((tmp_14 * m22 + tmp_17 * m32 + tmp_13 * m12) -
-          (tmp_16 * m32 + tmp_12 * m12 + tmp_15 * m22));
-    dst[13] = d * ((tmp_20 * m32 + tmp_12 * m02 + tmp_19 * m22) -
-          (tmp_18 * m22 + tmp_21 * m32 + tmp_13 * m02));
-    dst[14] = d * ((tmp_18 * m12 + tmp_23 * m32 + tmp_15 * m02) -
-          (tmp_22 * m32 + tmp_14 * m02 + tmp_19 * m12));
-    dst[15] = d * ((tmp_22 * m22 + tmp_16 * m02 + tmp_21 * m12) -
-          (tmp_20 * m12 + tmp_23 * m22 + tmp_17 * m02));
-
-    return dst;
+  constructor() {
+    this.children = [];
   }
 
   /**
-	 * Generates a look-at matrix with the given eye position, focal point, and up axis
-	 * Note: Function taken from glMatrix JavaScript library (see libs folder)
-	 * @param {vec3} eye Position of the viewer
-	 * @param {vec3} center Point the viewer is looking at
-	 * @param {vec3} up vec3 pointing up
-	 * @returns {Float32Array} out
-	 */
-	function lookAt (eyex, eyey, eyez, centerx, centery, centerz, upx, upy, upz) {
+   * appends a new child to this node
+   * @param child the child to append
+   * @returns {SceneGraphNode} the child
+   */
+  append(child) {
+    this.children.push(child);
+    return child;
+  }
 
-      var out = makeIdentityMatrix;
+  /**
+   * removes a child from this node
+   * @param child
+   * @returns {boolean} whether the operation was successful
+   */
+  remove(child) {
+    var i = this.children.indexOf(child);
+    if (i >= 0) {
+      this.children.splice(i, 1);
+    }
+    return i >= 0;
+  };
 
-      var x0, x1, x2, y0, y1, y2, z0, z1, z2, len;
+  /**
+   * render method to render this scengraph
+   * @param context
+   */
+  render(context) {
 
-	    z0 = eyex - centerx;
-	    z1 = eyey - centery;
-	    z2 = eyez - centerz;
+    //render all children
+    this.children.forEach(function (c) {
+      return c.render(context);
+    });
+  };
+}
 
-	    len = 1 / Math.sqrt(z0 * z0 + z1 * z1 + z2 * z2);
-	    z0 *= len;
-	    z1 *= len;
-	    z2 *= len;
+/**
+ * a quad node that renders floor plane
+ */
+class QuadRenderNode extends SceneGraphNode {
 
-	    x0 = upy * z2 - upz * z1;
-	    x1 = upz * z0 - upx * z2;
-	    x2 = upx * z1 - upy * z0;
-	    len = Math.sqrt(x0 * x0 + x1 * x1 + x2 * x2);
-	    if (!len) {
-	        x0 = 0;
-	        x1 = 0;
-	        x2 = 0;
-	    } else {
-	        len = 1 / len;
-	        x0 *= len;
-	        x1 *= len;
-	        x2 *= len;
-	    }
+  render(context) {
 
-	    y0 = z1 * x2 - z2 * x1;
-	    y1 = z2 * x0 - z0 * x2;
-	    y2 = z0 * x1 - z1 * x0;
+    //setting the model view and projection matrix on shader
+    setUpModelViewMatrix(context.sceneMatrix, context.viewMatrix);
 
-	    len = Math.sqrt(y0 * y0 + y1 * y1 + y2 * y2);
-	    if (!len) {
-	        y0 = 0;
-	        y1 = 0;
-	        y2 = 0;
-	    } else {
-	        len = 1 / len;
-	        y0 *= len;
-	        y1 *= len;
-	        y2 *= len;
-	    }
+    var positionLocation = gl.getAttribLocation(context.shader, 'a_position');
+    gl.bindBuffer(gl.ARRAY_BUFFER, quadVertexBuffer);
+    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(positionLocation);
 
-	    out[0] = x0;
-	    out[1] = y0;
-	    out[2] = z0;
-	    out[3] = 0;
-	    out[4] = x1;
-	    out[5] = y1;
-	    out[6] = z1;
-	    out[7] = 0;
-	    out[8] = x2;
-	    out[9] = y2;
-	    out[10] = z2;
-	    out[11] = 0;
-	    out[12] = -(x0 * eyex + x1 * eyey + x2 * eyez);
-	    out[13] = -(y0 * eyex + y1 * eyey + y2 * eyez);
-	    out[14] = -(z0 * eyex + z1 * eyey + z2 * eyez);
-	    out[15] = 1;
+    var colorLocation = gl.getAttribLocation(context.shader, 'a_color');
+    gl.bindBuffer(gl.ARRAY_BUFFER, quadColorBuffer);
+    gl.vertexAttribPointer(colorLocation, 4, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(colorLocation);
 
-	    return out;
-	};
+    //TASK 1-3
+    gl.uniform1f(gl.getUniformLocation(context.shader, 'u_alpha'), 1);
+
+    // draw the bound data as 6 vertices = 2 triangles starting at index 0
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    //render children
+    super.render(context);
+  }
+}
+
+//TASK 4-1
+/**
+ * a cube node that renders a cube at its local origin
+ */
+class CubeRenderNode extends SceneGraphNode {
+
+  constructor(color) { //constructor(matrix ,color) {
+    super();
+    if(color != null)
+    {
+      this.nodeColor =  color;
+    }
+    else {
+      this.nodeColor =  [1,1,1];
+    }
+
+  }
+
+  render(context) {
+
+    //setting the model view and projection matrix on shader
+    setUpModelViewMatrix(context.sceneMatrix, context.viewMatrix);
+
+    var positionLocation = gl.getAttribLocation(context.shader, 'a_position');
+    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexBuffer);
+    gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false,0,0) ;
+    gl.enableVertexAttribArray(positionLocation);
+
+    var colorLocation = gl.getAttribLocation(context.shader, 'a_color');
+    gl.bindBuffer(gl.ARRAY_BUFFER, cubeColorBuffer);
+    gl.vertexAttribPointer(colorLocation, 3, gl.FLOAT, false,0,0) ;
+    gl.enableVertexAttribArray(colorLocation);
+
+    //set alpha value for blending
+    //TASK 1-3
+    gl.uniform1f(gl.getUniformLocation(context.shader, 'u_alpha'), 1);
+
+    var fColorLocation = gl.getUniformLocation(shaderProgram, 'a_color');
+
+    gl.uniform3f(fColorLocation,this.nodeColor[0],this.nodeColor[1],this.nodeColor[2] );
+
+  //  gl.uniform4f(fColorLocation, 0.9, 0.44, 0.86, 1);
+
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeIndexBuffer);
+    gl.drawElements(gl.TRIANGLES, cubeIndices.length, gl.UNSIGNED_SHORT, 0); //LINE_STRIP
+
+    //render children
+    super.render(context);
+  }
+}
+
+//TASK 3-0
+/**
+ * a transformation node, i.e applied a transformation matrix to its successors
+ */
+class TransformationSceneGraphNode extends SceneGraphNode {
+  /**
+   * the matrix to apply
+   * @param matrix
+   */
+  constructor(matrix) {
+    super();
+    this.matrix = matrix || mat4.create();
+  }
+
+  render(context) {
+    //backup previous one
+    var previous = context.sceneMatrix;
+    //set current world matrix by multiplying it
+    if (previous === null) {
+      context.sceneMatrix = mat4.clone(this.matrix);
+    }
+    else {
+      context.sceneMatrix = mat4.multiply(mat4.create(), previous, this.matrix);
+    }
+
+    //render children
+    super.render(context);
+    //restore backup
+    context.sceneMatrix = previous;
+  }
+
+  setMatrix(matrix) {
+    this.matrix = matrix;
+  }
+}
+
+//TASK 5-0
+/**
+ * a shader node sets a specific shader for the successors
+ */
+class ShaderSceneGraphNode extends SceneGraphNode {
+  /**
+   * constructs a new shader node with the given shader program
+   * @param shader the shader program to use
+   */
+  constructor(shader) {
+    super();
+    this.shader = shader;
+  }
+
+  render(context) {
+    //backup prevoius one
+    var backup = context.shader;
+    //set current shader
+    context.shader = this.shader;
+    //activate the shader
+    context.gl.useProgram(this.shader);
+    //set projection matrix
+    gl.uniformMatrix4fv(gl.getUniformLocation(context.shader, 'u_projection'),
+      false, context.projectionMatrix);
+    //render children
+    super.render(context);
+    //restore backup
+    context.shader = backup;
+    //activate the shader
+    context.gl.useProgram(backup);
+  }
+};
 
 function convertDegreeToRadians(degree) {
   return degree * Math.PI / 180
