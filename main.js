@@ -285,12 +285,14 @@ function render(timeInMilliseconds) {
   gl.useProgram(shaderProgram);
 
   //update transformation of tank for rotation animation
-  var tankTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateY(animatedAngle/2));
+  var tankTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(-0.0001*timeInMilliseconds,0.0,0));
   tankTransformationMatrix = mat4.multiply(mat4.create(), tankTransformationMatrix, glm.scale(0.4,0.4,0.4));
+//  tankTransformationMatrix = mat4.multiply(mat4.create(), tankTransformationMatrix, glm.rotateY(animatedAngle/2));
+
   tankTransformationNode.setMatrix(tankTransformationMatrix);
 
   //rotate  tankHead
-  var tankHeadTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateY(animatedAngle/4));
+  var tankHeadTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateY(animatedAngle*(-0.5)));
   tankHeadTransformationNode.setMatrix(tankHeadTransformationMatrix);
 
 
