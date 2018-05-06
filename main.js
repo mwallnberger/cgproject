@@ -169,7 +169,7 @@ function createTank(rootNode) {
   bodyFeuerTransformationMatrix = mat4.multiply(mat4.create(), bodyFeuerTransformationMatrix, glm.scale(1,0.5,0.8));
   var bodyFeuerTransformationNode = new TransformationSceneGraphNode(bodyFeuerTransformationMatrix);
   tankHeadTransformationNode.append(bodyFeuerTransformationNode);
-  cubeNode = new CubeRenderNode([0.18, 0.44, 0.86]);
+  cubeNode = new CubeRenderNode([0.18, 0.44, 0.66]);
   bodyFeuerTransformationNode.append(cubeNode);
 
   //Feuerrohr
@@ -285,7 +285,11 @@ function render(timeInMilliseconds) {
   gl.useProgram(shaderProgram);
 
   //update transformation of tank for rotation animation
-  var tankTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(-0.0001*timeInMilliseconds,0.0,0));
+  var tankTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), mat4.create());
+  if(timeInMilliseconds < 2000)
+  {
+     tankTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(-0.0001*timeInMilliseconds,0.0,0));
+  }
   tankTransformationMatrix = mat4.multiply(mat4.create(), tankTransformationMatrix, glm.scale(0.4,0.4,0.4));
 //  tankTransformationMatrix = mat4.multiply(mat4.create(), tankTransformationMatrix, glm.rotateY(animatedAngle/2));
 
