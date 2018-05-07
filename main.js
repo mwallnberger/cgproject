@@ -11,6 +11,13 @@ var canvasWidth = 800;
 var canvasHeight = 800;
 var aspectRatio = canvasWidth / canvasHeight;
 
+const camera = {
+  rotation: {
+    x: 0,
+    y: 0
+  }
+};
+
 //rendering context
 var context;
 
@@ -82,7 +89,7 @@ loadResources({
   init(resources);
 
   //render one frame
-  render();
+  render(0);
 });
 
 /**
@@ -112,13 +119,64 @@ function init(resources) {
   var transformationNode = new TransformationSceneGraphNode(quadTransformationMatrix);
   rootNode.append(transformationNode);
 
+  // TODO probably needs to be moved somewhere else
+  // we've got 2 floors now, this floor is the dark green one
+  let floor = new RenderSGNode(makeRect(2,2));
+
+  rootNode.append(new TransformationSGNode(glm.transform({translate: [0,-1.5,0], rotateX: -90, scale:3}), [floor]));
+
   var staticColorShaderNode = new ShaderSceneGraphNode(createProgram(gl, resources.staticcolorvs, resources.fs));
   transformationNode.append(staticColorShaderNode);
+
   var quadNode = new QuadRenderNode();
   staticColorShaderNode.append(quadNode);
 
   createTank(rootNode);
   createSoldier(rootNode);
+  initInteraction(gl.canvas);
+}
+
+// copied from exercise 4 might need to be adjusted
+function initInteraction(canvas) {
+  const mouse = {
+    pos: { x : 0, y : 0},
+    leftButtonDown: false
+  };
+  function toPos(event) {
+    //convert to local coordinates
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top
+    };
+  }
+  canvas.addEventListener('mousedown', function(event) {
+    mouse.pos = toPos(event);
+    mouse.leftButtonDown = event.button === 0;
+  });
+  canvas.addEventListener('mousemove', function(event) {
+    const pos = toPos(event);
+    const delta = { x : mouse.pos.x - pos.x, y: mouse.pos.y - pos.y };
+    //TASK 0-1 add delta mouse to camera.rotation if the left mouse button is pressed
+    if(mouse.leftButtonDown){
+      camera.rotation.x += delta.x;
+      camera.rotation.y += delta.y;
+    }
+    mouse.pos = pos;
+  });
+  canvas.addEventListener('mouseup', function(event) {
+    mouse.pos = toPos(event);
+    mouse.leftButtonDown = false;
+  });
+
+  //register a key handler to reset camera
+  document.addEventListener('keypress', function(event) {
+    //https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent
+    if (event.code === 'KeyR') { //reset camera rotation
+      camera.rotation.x = 0;
+  		camera.rotation.y = 0;
+    }
+  });
 }
 
 function initQuadBuffer() {
@@ -153,7 +211,12 @@ function initCubeBuffer() {
 function createTank(rootNode) {
 
 //  var tankTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateY(animatedAngle/2));
-  var tankTransformationMatrix = mat4.create();
+  /*var tankTransformationMatrix = mat4.create();
+  tankTransformationNode = new TransformationSceneGraphNode(tankTransformationMatrix);
+  rootNode.append(tankTransformationNode);*/
+
+  var tankTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateY(animatedAngle));
+  tankTransformationMatrix = mat4.multiply(mat4.create(), tankTransformationMatrix, glm.translate(0.3,0.9,0));
   tankTransformationNode = new TransformationSceneGraphNode(tankTransformationMatrix);
   rootNode.append(tankTransformationNode);
 
@@ -268,6 +331,7 @@ function createSoldier(rootNode) {
  * render one frame
  */
 function render(timeInMilliseconds) {
+  checkForWindowResize(gl);
 
   //set background color to light gray
   gl.clearColor(0.9, 0.9, 0.9, 1.0);
@@ -286,13 +350,15 @@ function render(timeInMilliseconds) {
 
   //update transformation of tank for rotation animation
   var tankTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), mat4.create());
-  if(timeInMilliseconds < 2000)
+  // TODO I took this line from the if below, double check if something needs to be adjusted
+  tankTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(-0.0001*timeInMilliseconds,0.0,0));
+  /*if(timeInMilliseconds < 2000)
   {
      tankTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(-0.0001*timeInMilliseconds,0.0,0));
   }
   tankTransformationMatrix = mat4.multiply(mat4.create(), tankTransformationMatrix, glm.scale(0.4,0.4,0.4));
 //  tankTransformationMatrix = mat4.multiply(mat4.create(), tankTransformationMatrix, glm.rotateY(animatedAngle/2));
-
+*/
   tankTransformationNode.setMatrix(tankTransformationMatrix);
 
   //rotate  tankHead
@@ -317,6 +383,19 @@ function render(timeInMilliseconds) {
 
 
   context = createSceneGraphContext(gl, shaderProgram);
+
+  context.projectionMatrix = mat4.perspective(mat4.create(), glm.deg2rad(30), gl.drawingBufferWidth / gl.drawingBufferHeight, 0.01, 100);
+
+  //ReCap: what does this mean?
+  context.viewMatrix = mat4.lookAt(mat4.create(), [0,1,-10], [0,0,0], [0,1,0]);
+
+  //TASK 0-2 rotate whole scene according to the mouse rotation stored in
+  //camera.rotation.x and camera.rotation.y
+  context.sceneMatrix = mat4.multiply(mat4.create(),
+                            glm.rotateY(camera.rotation.x),
+                            glm.rotateX(camera.rotation.y));
+
+  //rotateNode.matrix = glm.rotateY(timeInMilliseconds*-0.01);
 
   rootNode.render(context);
 
