@@ -114,7 +114,7 @@ function init(resources) {
 
   var quadTransformationMatrix = glm.rotateX(90);
   quadTransformationMatrix = mat4.multiply(mat4.create(), quadTransformationMatrix, glm.translate(0.0,-0.5,0));
-  quadTransformationMatrix = mat4.multiply(mat4.create(), quadTransformationMatrix, glm.scale(5.5,5.5,5.5));
+  quadTransformationMatrix = mat4.multiply(mat4.create(), quadTransformationMatrix, glm.scale(10.5,10.5,10.5));
 
   var transformationNode = new TransformationSceneGraphNode(quadTransformationMatrix);
   rootNode.append(transformationNode);
@@ -252,15 +252,15 @@ function createTank(rootNode) {
   cubeNode = new CubeRenderNode([0.18, 0.44, 0.86]);
   bodyTransformationNode.append(cubeNode);
 
-  var leftKetteTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(0,0.0,s*1));
-  leftKetteTransformationMatrix = mat4.multiply(mat4.create(), leftKetteTransformationMatrix, glm.scale(2.5,1,0.5));
+  var leftKetteTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(0,0.1,s*1));
+  leftKetteTransformationMatrix = mat4.multiply(mat4.create(), leftKetteTransformationMatrix, glm.scale(2.5,0.5,0.5));
   var leftKetteTransformationNode = new TransformationSceneGraphNode(leftKetteTransformationMatrix);
   tankTransformationNode.append(leftKetteTransformationNode);
   cubeNode = new CubeRenderNode([0, 0,0]);
   leftKetteTransformationNode.append(cubeNode);
 
-  var rightKetteTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(0,0.0,-s*1));
-  rightKetteTransformationMatrix = mat4.multiply(mat4.create(), rightKetteTransformationMatrix, glm.scale(2.5,1,0.5));
+  var rightKetteTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(0,0.1,-s*1));
+  rightKetteTransformationMatrix = mat4.multiply(mat4.create(), rightKetteTransformationMatrix, glm.scale(2.5,0.5,0.5));
   var rightKetteTransformationNode = new TransformationSceneGraphNode(rightKetteTransformationMatrix);
   tankTransformationNode.append(rightKetteTransformationNode);
   cubeNode = new CubeRenderNode([0, 0,0]);
@@ -350,15 +350,7 @@ function render(timeInMilliseconds) {
 
   //update transformation of tank for rotation animation
   var tankTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), mat4.create());
-  // TODO I took this line from the if below, double check if something needs to be adjusted
-  tankTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(-0.0001*timeInMilliseconds,0.0,0));
-  /*if(timeInMilliseconds < 2000)
-  {
-     tankTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(-0.0001*timeInMilliseconds,0.0,0));
-  }
-  tankTransformationMatrix = mat4.multiply(mat4.create(), tankTransformationMatrix, glm.scale(0.4,0.4,0.4));
-//  tankTransformationMatrix = mat4.multiply(mat4.create(), tankTransformationMatrix, glm.rotateY(animatedAngle/2));
-*/
+  tankTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(-0.00028*timeInMilliseconds+6,0.0,0));
   tankTransformationNode.setMatrix(tankTransformationMatrix);
 
   //rotate  tankHead
@@ -367,14 +359,35 @@ function render(timeInMilliseconds) {
 
 
   //update transformation of soldier for rotation animation
-  var soldierTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateY(30));
+  var soldierTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateY(90));
+
+  if(timeInMilliseconds<14000)
+  {
+    soldierTransformationMatrix = mat4.multiply(mat4.create(), soldierTransformationMatrix, glm.translate(0,-0.3,0));
+  }
+  else
+  {
+    soldierTransformationMatrix = mat4.multiply(mat4.create(), soldierTransformationMatrix, glm.translate(0,-0.3,-0.00015*(timeInMilliseconds-14000)));
+  }
+
   soldierTransformationMatrix = mat4.multiply(mat4.create(), soldierTransformationMatrix, glm.scale(1,1,1));
-  soldierTransformationMatrix = mat4.multiply(mat4.create(), soldierTransformationMatrix, glm.translate(-0.8,0.0,0));
+  if(timeInMilliseconds>25000)
+  {
+    soldierTransformationMatrix = mat4.multiply(mat4.create(), soldierTransformationMatrix, glm.rotateX(90));
+  }
+
   soldierTransformationNode.setMatrix(soldierTransformationMatrix);
 
   //update transformation of soldier for rotation animation
 
-  var soldierHeadTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateY(animatedAngle/4));
+  var soldierHeadTransformationMatrix = mat4.create();
+  if(timeInMilliseconds<13000)
+  {
+    soldierHeadTransformationMatrix = mat4.multiply(mat4.create(), soldierHeadTransformationMatrix, glm.rotateY(animatedAngle/4));
+  }
+  else {
+    soldierHeadTransformationMatrix = mat4.multiply(mat4.create(), soldierHeadTransformationMatrix, glm.rotateY(animatedAngle*2));
+  }
   soldierHeadTransformationMatrix = mat4.multiply(mat4.create(), soldierHeadTransformationMatrix, glm.translate(0,1.0,0));
   soldierHeadTransformationMatrix = mat4.multiply(mat4.create(), soldierHeadTransformationMatrix, glm.scale(0.2,0.2,0.2));
   soldierHeadTransformationNode.setMatrix(soldierHeadTransformationMatrix);
@@ -385,23 +398,49 @@ function render(timeInMilliseconds) {
   context = createSceneGraphContext(gl, shaderProgram);
 
   context.projectionMatrix = mat4.perspective(mat4.create(), glm.deg2rad(30), gl.drawingBufferWidth / gl.drawingBufferHeight, 0.01, 100);
-
-  //ReCap: what does this mean?
-  context.viewMatrix = mat4.lookAt(mat4.create(), [0,1,-10], [0,0,0], [0,1,0]);
+/*
+  if(timeInMilliseconds<1000)
+  {
+    context.viewMatrix = mat4.lookAt(mat4.create(), [0,1,-0], [-0.0001*timeInMilliseconds+7,0,0], [0,1,0]);
+  }
+  else
+  {
+    context.viewMatrix = mat4.lookAt(mat4.create(), [4,2,0], [0,0.5,0], [0,1,0]);
+  }*/
+//  console.log(timeInMilliseconds);
+  switch (true) {
+      case (timeInMilliseconds < 8000):
+          context.viewMatrix = mat4.lookAt(mat4.create(), [0,1,-0], [-0.0001*timeInMilliseconds+7,0,0], [0,1,0]);
+          break;
+      case (timeInMilliseconds < 16000):
+          context.viewMatrix = mat4.lookAt(mat4.create(), [4,2,0], [0,0.5,0], [0,1,0]);
+          break;
+      case (timeInMilliseconds < 24000):
+          context.viewMatrix = mat4.lookAt(mat4.create(), [0,25,1], [0,0,0], [0,1,0]);
+              break;
+      case (timeInMilliseconds < 28000):
+        context.viewMatrix = mat4.lookAt(mat4.create(), [-10,2,-4], [-0.00028*timeInMilliseconds+6,0,0], [0,1,0]);
+              break;
+      default:
+          context.viewMatrix = mat4.lookAt(mat4.create(), [0,30,1], [0,0,0], [0,1,0]);
+          break;
+  }
 
   //TASK 0-2 rotate whole scene according to the mouse rotation stored in
   //camera.rotation.x and camera.rotation.y
+
   context.sceneMatrix = mat4.multiply(mat4.create(),
                             glm.rotateY(camera.rotation.x),
                             glm.rotateX(camera.rotation.y));
 
   //rotateNode.matrix = glm.rotateY(timeInMilliseconds*-0.01);
-
+  if(timeInMilliseconds<30000)
+  {
   rootNode.render(context);
 
   //request another render call as soon as possible
   requestAnimationFrame(render);
-
+}
   //animate based on elapsed time
   animatedAngle = timeInMilliseconds/10;
 }
