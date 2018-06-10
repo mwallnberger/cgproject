@@ -393,8 +393,6 @@ function render(timeInMilliseconds) {
   soldierHeadTransformationNode.setMatrix(soldierHeadTransformationMatrix);
 
 
-
-
   context = createSceneGraphContext(gl, shaderProgram);
 
   context.projectionMatrix = mat4.perspective(mat4.create(), glm.deg2rad(30), gl.drawingBufferWidth / gl.drawingBufferHeight, 0.01, 100);
