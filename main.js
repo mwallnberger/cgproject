@@ -7,7 +7,7 @@ var gl = null;
 //our shader program
 var shaderProgram = null;
 
-var canvasWidth = 800;
+var canvasWidth = 810;
 var canvasHeight = 800;
 var aspectRatio = canvasWidth / canvasHeight;
 
