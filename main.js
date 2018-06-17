@@ -83,6 +83,10 @@ var cubeIndices =  new Float32Array([
 loadResources({
   vs: 'shader/simple.vs.glsl',
   fs: 'shader/simple.fs.glsl',
+  vs_phong: 'shader/phong.vs.glsl',
+  fs_phong: 'shader/phong.fs.glsl',
+  vs_single: 'shader/single.vs.glsl',
+  fs_single: 'shader/single.fs.glsl',
   //TASK 5-3
   staticcolorvs: 'shader/static_color.vs.glsl'
 }).then(function (resources /*an object containing our keys with the loaded resources*/) {
@@ -104,35 +108,58 @@ function init(resources) {
   //create the shader program
   shaderProgram = createProgram(gl, resources.vs, resources.fs);
 
+
+
+
   //set buffers for quad
   initQuadBuffer();
   //set buffers for cube
   initCubeBuffer();
 
   //create scenegraph
-  rootNode = new SceneGraphNode();
+  rootNode = new ShaderSGNode(shaderProgram);
+
+
+
+    function createLightSphere() {
+        return new ShaderSGNode(createProgram(gl, resources.vs_single, resources.fs_single), [
+          new RenderSGNode(makeSphere(.2,10,10))
+        ]);
+      }
+
+
+      //TASK 3-6 create white light node at [0, 2, 2]
+      let light = new LightNode();
+      light.ambient = [0, 0, 0, 1];
+      light.diffuse = [1, 1, 1, 1];
+      light.specular = [1, 1, 1, 1];
+      light.position = [0, 2, 2];
+      light.append(createLightSphere());
+      //TASK 4-1 animated light using rotateLight transformation node
+      rotateLight = new TransformationSGNode(mat4.create(), [
+          light
+      ]);
+      rootNode.append(rotateLight);
 
   var quadTransformationMatrix = glm.rotateX(90);
   quadTransformationMatrix = mat4.multiply(mat4.create(), quadTransformationMatrix, glm.translate(0.0,-0.5,0));
   quadTransformationMatrix = mat4.multiply(mat4.create(), quadTransformationMatrix, glm.scale(10.5,10.5,10.5));
 
-  var transformationNode = new TransformationSceneGraphNode(quadTransformationMatrix);
+  var transformationNode = new TransformationSGNode(quadTransformationMatrix);
   rootNode.append(transformationNode);
 
-  // TODO probably needs to be moved somewhere else
-  // we've got 2 floors now, this floor is the dark green one
-  let floor = new RenderSGNode(makeRect(2,2));
+  let floor = new RenderSGNode(makeRect(8,8));
 
-  rootNode.append(new TransformationSGNode(glm.transform({translate: [0,-1.5,0], rotateX: -90, scale:3}), [floor]));
+  rootNode.append(new TransformationSGNode(glm.transform({translate: [0,0,0], rotateX: -90, scale:3}), [floor]));
 
-  var staticColorShaderNode = new ShaderSceneGraphNode(createProgram(gl, resources.staticcolorvs, resources.fs));
-  transformationNode.append(staticColorShaderNode);
+  staticColorShaderNode = new ShaderSGNode(createProgram(gl, resources.staticcolorvs, resources.fs));
+  //transformationNode.append(staticColorShaderNode);
 
   var quadNode = new QuadRenderNode();
   staticColorShaderNode.append(quadNode);
 
-  createTank(rootNode);
   createSoldier(rootNode);
+  createTank(rootNode);
   initInteraction(gl.canvas);
 }
 
@@ -217,20 +244,20 @@ function createTank(rootNode) {
 
   var tankTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateY(animatedAngle));
   tankTransformationMatrix = mat4.multiply(mat4.create(), tankTransformationMatrix, glm.translate(0.3,0.9,0));
-  tankTransformationNode = new TransformationSceneGraphNode(tankTransformationMatrix);
+  tankTransformationNode = new TransformationSGNode(tankTransformationMatrix);
   rootNode.append(tankTransformationNode);
 
   //Drehbares Teil Transformation
   var tankHeadTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateY(animatedAngle));
   tankHeadTransformationMatrix = mat4.multiply(mat4.create(), tankHeadTransformationMatrix, glm.translate(1,1,0));
   tankHeadTransformationMatrix = mat4.multiply(mat4.create(), tankHeadTransformationMatrix, glm.scale(5,1,1));
-  tankHeadTransformationNode = new TransformationSceneGraphNode(tankHeadTransformationMatrix);
+  tankHeadTransformationNode = new TransformationSGNode(tankHeadTransformationMatrix);
   tankTransformationNode.append(tankHeadTransformationNode);
 
   //DrehbaresTeil Body
   bodyFeuerTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(0.1,0.6,0));
   bodyFeuerTransformationMatrix = mat4.multiply(mat4.create(), bodyFeuerTransformationMatrix, glm.scale(1,0.5,0.8));
-  var bodyFeuerTransformationNode = new TransformationSceneGraphNode(bodyFeuerTransformationMatrix);
+  var bodyFeuerTransformationNode = new TransformationSGNode(bodyFeuerTransformationMatrix);
   tankHeadTransformationNode.append(bodyFeuerTransformationNode);
   cubeNode = new CubeRenderNode([0.18, 0.44, 0.66]);
   bodyFeuerTransformationNode.append(cubeNode);
@@ -239,7 +266,7 @@ function createTank(rootNode) {
   var feuerrohrTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateZ(-7));
   feuerrohrTransformationMatrix = mat4.multiply(mat4.create(), feuerrohrTransformationMatrix, glm.translate(-0.6,0.6,0));
   feuerrohrTransformationMatrix = mat4.multiply(mat4.create(), feuerrohrTransformationMatrix, glm.scale(1.5,0.1,0.1));
-  var feuerrohrTransformationNode = new TransformationSceneGraphNode(feuerrohrTransformationMatrix);
+  var feuerrohrTransformationNode = new TransformationSGNode(feuerrohrTransformationMatrix);
   tankHeadTransformationNode.append(feuerrohrTransformationNode);
   cubeNode = new CubeRenderNode([1, 0.2, 0.3]);
   feuerrohrTransformationNode.append(cubeNode);
@@ -247,21 +274,21 @@ function createTank(rootNode) {
   //Body
   var bodyTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(0,0.3,0));
   bodyTransformationMatrix = mat4.multiply(mat4.create(), bodyTransformationMatrix, glm.scale(2,0.6,1));
-  var bodyTransformationNode = new TransformationSceneGraphNode(bodyTransformationMatrix);
+  var bodyTransformationNode = new TransformationSGNode(bodyTransformationMatrix);
   tankTransformationNode.append(bodyTransformationNode);
   cubeNode = new CubeRenderNode([0.18, 0.44, 0.86]);
   bodyTransformationNode.append(cubeNode);
 
   var leftKetteTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(0,0.1,s*1));
   leftKetteTransformationMatrix = mat4.multiply(mat4.create(), leftKetteTransformationMatrix, glm.scale(2.5,0.5,0.5));
-  var leftKetteTransformationNode = new TransformationSceneGraphNode(leftKetteTransformationMatrix);
+  var leftKetteTransformationNode = new TransformationSGNode(leftKetteTransformationMatrix);
   tankTransformationNode.append(leftKetteTransformationNode);
   cubeNode = new CubeRenderNode([0, 0,0]);
   leftKetteTransformationNode.append(cubeNode);
 
   var rightKetteTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(0,0.1,-s*1));
   rightKetteTransformationMatrix = mat4.multiply(mat4.create(), rightKetteTransformationMatrix, glm.scale(2.5,0.5,0.5));
-  var rightKetteTransformationNode = new TransformationSceneGraphNode(rightKetteTransformationMatrix);
+  var rightKetteTransformationNode = new TransformationSGNode(rightKetteTransformationMatrix);
   tankTransformationNode.append(rightKetteTransformationNode);
   cubeNode = new CubeRenderNode([0, 0,0]);
   rightKetteTransformationNode.append(cubeNode);
@@ -272,57 +299,57 @@ function createSoldier(rootNode) {
 
 //  var tankTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateY(animatedAngle/2));
   var soldierTransformationMatrix = mat4.create();
-  soldierTransformationNode = new TransformationSceneGraphNode(soldierTransformationMatrix);
+  soldierTransformationNode = new TransformationSGNode(soldierTransformationMatrix);
   rootNode.append(soldierTransformationNode);
 
   // Kopf
   var soldierHeadTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateY(animatedAngle));
   soldierHeadTransformationMatrix = mat4.multiply(mat4.create(), soldierHeadTransformationMatrix, glm.translate(0,1.0,0));
   soldierHeadTransformationMatrix = mat4.multiply(mat4.create(), soldierHeadTransformationMatrix, glm.scale(0.2,0.2,0.2));
-  soldierHeadTransformationNode = new TransformationSceneGraphNode(soldierHeadTransformationMatrix);
+  soldierHeadTransformationNode = new TransformationSGNode(soldierHeadTransformationMatrix);
   soldierTransformationNode.append(soldierHeadTransformationNode);
-  cubeNode = new CubeRenderNode([0, 0.168, 0]);
+  cubeNode = new CubeRenderNode([0, 0.50, 0]);
   soldierHeadTransformationNode.append(cubeNode);
 
   //Rumpf
   var rumpfTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(0,0.8,0));
   rumpfTransformationMatrix = mat4.multiply(mat4.create(), rumpfTransformationMatrix, glm.scale(0.6,0.5,0.2));
-  var rumpfTransformationNode = new TransformationSceneGraphNode(rumpfTransformationMatrix);
+  var rumpfTransformationNode = new TransformationSGNode(rumpfTransformationMatrix);
   soldierTransformationNode.append(rumpfTransformationNode);
-  cubeNode = new CubeRenderNode([0, 0.168, 0]);
+  cubeNode = new CubeRenderNode([0, 0.50, 0]);
   rumpfTransformationNode.append(cubeNode);
 
 
   //Bein l
   var lBeinTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(0.1,0.5,0));
   lBeinTransformationMatrix = mat4.multiply(mat4.create(), lBeinTransformationMatrix, glm.scale(0.2,0.5,0.2));
-  var lBeinTransformationNode = new TransformationSceneGraphNode(lBeinTransformationMatrix);
+  var lBeinTransformationNode = new TransformationSGNode(lBeinTransformationMatrix);
   soldierTransformationNode.append(lBeinTransformationNode);
-  cubeNode = new CubeRenderNode([0, 0.168, 0]);
+  cubeNode = new CubeRenderNode([0, 0.50, 0]);
   lBeinTransformationNode.append(cubeNode);
 
   //Bein r
   var rBeinTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(-0.1,0.5,0));
   rBeinTransformationMatrix = mat4.multiply(mat4.create(), rBeinTransformationMatrix, glm.scale(0.2,0.5,0.2));
-  var rBeinTransformationNode = new TransformationSceneGraphNode(rBeinTransformationMatrix);
+  var rBeinTransformationNode = new TransformationSGNode(rBeinTransformationMatrix);
   soldierTransformationNode.append(rBeinTransformationNode);
-  cubeNode = new CubeRenderNode([0, 0.168, 0]);
+  cubeNode = new CubeRenderNode([0, 0.50, 0]);
   rBeinTransformationNode.append(cubeNode);
 
   //Arm r
   var rArmTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(0.2,0.8,0));
   rArmTransformationMatrix = mat4.multiply(mat4.create(), rArmTransformationMatrix, glm.scale(0.2,0.5,0.2));
-  var rArmTransformationNode = new TransformationSceneGraphNode(rArmTransformationMatrix);
+  var rArmTransformationNode = new TransformationSGNode(rArmTransformationMatrix);
   soldierTransformationNode.append(rArmTransformationNode);
-  cubeNode = new CubeRenderNode([0, 0.168, 0]);
+  cubeNode = new CubeRenderNode([0, 0.50, 0]);
   rArmTransformationNode.append(cubeNode);
 
   //Arm l
   var lArmTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(-0.2,0.8,0));
   lArmTransformationMatrix = mat4.multiply(mat4.create(), lArmTransformationMatrix, glm.scale(0.2,0.5,0.2));
-  var lArmTransformationNode = new TransformationSceneGraphNode(lArmTransformationMatrix);
+  var lArmTransformationNode = new TransformationSGNode(lArmTransformationMatrix);
   soldierTransformationNode.append(lArmTransformationNode);
-  cubeNode = new CubeRenderNode([0, 0.168, 0]);
+  cubeNode = new CubeRenderNode([0, 0.50, 0]);
   lArmTransformationNode.append(cubeNode);
 
 }
@@ -351,11 +378,11 @@ function render(timeInMilliseconds) {
   //update transformation of tank for rotation animation
   var tankTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), mat4.create());
   tankTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(-0.00028*timeInMilliseconds+6,0.0,0));
-  tankTransformationNode.setMatrix(tankTransformationMatrix);
+  tankTransformationNode.matrix = tankTransformationMatrix;
 
   //rotate  tankHead
   var tankHeadTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateY(animatedAngle*(-0.5)));
-  tankHeadTransformationNode.setMatrix(tankHeadTransformationMatrix);
+  tankHeadTransformationNode.matrix = tankHeadTransformationMatrix;
 
 
   //update transformation of soldier for rotation animation
@@ -376,7 +403,7 @@ function render(timeInMilliseconds) {
     soldierTransformationMatrix = mat4.multiply(mat4.create(), soldierTransformationMatrix, glm.rotateX(90));
   }
 
-  soldierTransformationNode.setMatrix(soldierTransformationMatrix);
+  soldierTransformationNode.matrix= soldierTransformationMatrix;
 
   //update transformation of soldier for rotation animation
 
@@ -390,7 +417,7 @@ function render(timeInMilliseconds) {
   }
   soldierHeadTransformationMatrix = mat4.multiply(mat4.create(), soldierHeadTransformationMatrix, glm.translate(0,1.0,0));
   soldierHeadTransformationMatrix = mat4.multiply(mat4.create(), soldierHeadTransformationMatrix, glm.scale(0.2,0.2,0.2));
-  soldierHeadTransformationNode.setMatrix(soldierHeadTransformationMatrix);
+  soldierHeadTransformationNode.matrix = soldierHeadTransformationMatrix;
 
 
   context = createSceneGraphContext(gl, shaderProgram);
@@ -434,11 +461,11 @@ function render(timeInMilliseconds) {
   //rotateNode.matrix = glm.rotateY(timeInMilliseconds*-0.01);
   if(timeInMilliseconds<30000)
   {
-  rootNode.render(context);
-
+    staticColorShaderNode.render(context);
+    rootNode.render(context);
   //request another render call as soon as possible
-  requestAnimationFrame(render);
-}
+    requestAnimationFrame(render);
+  }
   //animate based on elapsed time
   animatedAngle = timeInMilliseconds/10;
 }
@@ -484,55 +511,56 @@ function calculateViewMatrix() {
   return viewMatrix;
 }
 
-/**
- * base node of the scenegraph
- */
-class SceneGraphNode {
+class LightNode extends TransformationSGNode {
 
-  constructor() {
-    this.children = [];
+  constructor(position, children) {
+    super(children);
+    this.position = position || [0, 0, 0];
+    this.ambient = [0, 0, 0, 1];
+    this.diffuse = [1, 1, 1, 1];
+    this.specular = [1, 1, 1, 1];
+    //uniform name
+    this.uniform = 'u_light';
   }
 
   /**
-   * appends a new child to this node
-   * @param child the child to append
-   * @returns {SceneGraphNode} the child
+   * computes the absolute light position in world coordinates
    */
-  append(child) {
-    this.children.push(child);
-    return child;
+  computeLightPosition(context) {
+    //transform with the current model view matrix
+    const modelViewMatrix = mat4.multiply(mat4.create(), context.viewMatrix, context.sceneMatrix);
+    const pos = [this.position[0], this.position[1],this.position[2], 1];
+    return vec4.transformMat4(vec4.create(), pos, modelViewMatrix);
   }
 
-  /**
-   * removes a child from this node
-   * @param child
-   * @returns {boolean} whether the operation was successful
-   */
-  remove(child) {
-    var i = this.children.indexOf(child);
-    if (i >= 0) {
-      this.children.splice(i, 1);
-    }
-    return i >= 0;
-  };
+  setLightUniforms(context) {
+    const gl = context.gl,
+      shader = context.shader,
+      position = this.computeLightPosition(context);
 
-  /**
-   * render method to render this scengraph
-   * @param context
-   */
+    //TASK 3-5 set uniforms
+    gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.ambient'), this.ambient);
+    gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.diffuse'), this.diffuse);
+    gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.specular'), this.specular);
+
+    gl.uniform3f(gl.getUniformLocation(shader, this.uniform+'Pos'), position[0], position[1], position[2]);
+  }
+
   render(context) {
+    this.setLightUniforms(context);
 
-    //render all children
-    this.children.forEach(function (c) {
-      return c.render(context);
-    });
-  };
+    //since this a transformation node update the matrix according to my position
+    this.matrix = glm.translate(this.position[0], this.position[1], this.position[2]);
+
+    //render children
+    super.render(context);
+  }
 }
 
 /**
  * a quad node that renders floor plane
  */
-class QuadRenderNode extends SceneGraphNode {
+class QuadRenderNode extends TransformationSGNode {
 
   render(context) {
 
@@ -550,7 +578,7 @@ class QuadRenderNode extends SceneGraphNode {
     gl.enableVertexAttribArray(colorLocation);
 
     //TASK 1-3
-    gl.uniform1f(gl.getUniformLocation(context.shader, 'u_alpha'), 1);
+    gl.uniform1f(gl.getUniformLocation(context.shader, 'u_alpha'), 0);
 
     // draw the bound data as 6 vertices = 2 triangles starting at index 0
     gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -564,7 +592,7 @@ class QuadRenderNode extends SceneGraphNode {
 /**
  * a cube node that renders a cube at its local origin
  */
-class CubeRenderNode extends SceneGraphNode {
+class CubeRenderNode extends TransformationSGNode {
 
   constructor(color) { //constructor(matrix ,color) {
     super();
@@ -615,7 +643,7 @@ class CubeRenderNode extends SceneGraphNode {
 /**
  * a transformation node, i.e applied a transformation matrix to its successors
  */
-class TransformationSceneGraphNode extends SceneGraphNode {
+class TransformationSceneGraphNode extends TransformationSGNode {
   /**
    * the matrix to apply
    * @param matrix
@@ -647,38 +675,6 @@ class TransformationSceneGraphNode extends SceneGraphNode {
   }
 }
 
-//TASK 5-0
-/**
- * a shader node sets a specific shader for the successors
- */
-class ShaderSceneGraphNode extends SceneGraphNode {
-  /**
-   * constructs a new shader node with the given shader program
-   * @param shader the shader program to use
-   */
-  constructor(shader) {
-    super();
-    this.shader = shader;
-  }
-
-  render(context) {
-    //backup prevoius one
-    var backup = context.shader;
-    //set current shader
-    context.shader = this.shader;
-    //activate the shader
-    context.gl.useProgram(this.shader);
-    //set projection matrix
-    gl.uniformMatrix4fv(gl.getUniformLocation(context.shader, 'u_projection'),
-      false, context.projectionMatrix);
-    //render children
-    super.render(context);
-    //restore backup
-    context.shader = backup;
-    //activate the shader
-    context.gl.useProgram(backup);
-  }
-};
 
 function convertDegreeToRadians(degree) {
   return degree * Math.PI / 180
