@@ -71,8 +71,6 @@ void main() {
 	//TASK 2-3 use material uniform
 	//TASK 3-2 use light uniform
 	//TASK 5-6 use second light source
-	gl_FragColor =
-		calculateSimplePointLight(u_light, u_material, v_lightVec, v_normalVec, v_eyeVec)
-		+ calculateSimplePointLight(u_light2, u_material, v_light2Vec, v_normalVec, v_eyeVec);
+	gl_FragColor = calculateSimplePointLight(u_light, u_material, v_lightVec, v_normalVec, v_eyeVec);
 
 }

@@ -7,8 +7,8 @@ var gl = null;
 //our shader program
 var shaderProgram = null;
 
-var canvasWidth = 810;
-var canvasHeight = 800;
+var canvasWidth = 1200;
+var canvasHeight = 900;
 var aspectRatio = canvasWidth / canvasHeight;
 
 const camera = {
@@ -51,33 +51,33 @@ var quadColors = new Float32Array([
     0, 1, 0, 1,
     0, 0, 0, 1]);
 
-var s = 0.3; //size of cube
-var cubeVertices = new Float32Array([
-   -s,-s,-s, s,-s,-s, s, s,-s, -s, s,-s,
-   -s,-s, s, s,-s, s, s, s, s, -s, s, s,
-   -s,-s,-s, -s, s,-s, -s, s, s, -s,-s, s,
-   s,-s,-s, s, s,-s, s, s, s, s,-s, s,
-   -s,-s,-s, -s,-s, s, s,-s, s, s,-s,-s,
-   -s, s,-s, -s, s, s, s, s, s, s, s,-s,
-]);
+    var s = 0.3; //size of cube
+    var cubeVertices = new Float32Array([
+       -s,-s,-s, s,-s,-s, s, s,-s, -s, s,-s,
+       -s,-s, s, s,-s, s, s, s, s, -s, s, s,
+       -s,-s,-s, -s, s,-s, -s, s, s, -s,-s, s,
+       s,-s,-s, s, s,-s, s, s, s, s,-s, s,
+       -s,-s,-s, -s,-s, s, s,-s, s, s,-s,-s,
+       -s, s,-s, -s, s, s, s, s, s, s, s,-s,
+    ]);
 
-var cubeColors = new Float32Array([
-   0,1,1, 0,1,1, 0,1,1, 0,1,1,
-   1,0,1, 1,0,1, 1,0,1, 1,0,1,
-   1,0,0, 1,0,0, 1,0,0, 1,0,0,
-   0,0,1, 0,0,1, 0,0,1, 0,0,1,
-   1,1,0, 1,1,0, 1,1,0, 1,1,0,
-   0,1,0, 0,1,0, 0,1,0, 0,1,0
-]);
+    var cubeColors = new Float32Array([
+       0,1,1, 0,1,1, 0,1,1, 0,1,1,
+       1,0,1, 1,0,1, 1,0,1, 1,0,1,
+       1,0,0, 1,0,0, 1,0,0, 1,0,0,
+       0,0,1, 0,0,1, 0,0,1, 0,0,1,
+       1,1,0, 1,1,0, 1,1,0, 1,1,0,
+       0,1,0, 0,1,0, 0,1,0, 0,1,0
+    ]);
 
-var cubeIndices =  new Float32Array([
-   0,1,2, 0,2,3,
-   4,5,6, 4,6,7,
-   8,9,10, 8,10,11,
-   12,13,14, 12,14,15,
-   16,17,18, 16,18,19,
-   20,21,22, 20,22,23
-]);
+    var cubeIndices =  new Float32Array([
+       0,1,2, 0,2,3,
+       4,5,6, 4,6,7,
+       8,9,10, 8,10,11,
+       12,13,14, 12,14,15,
+       16,17,18, 16,18,19,
+       20,21,22, 20,22,23
+    ]);
 
 //load the shader resources using a utility function
 loadResources({
@@ -106,7 +106,7 @@ function init(resources) {
 
   //in WebGL / OpenGL3 we have to create and use our own shaders for the programmable pipeline
   //create the shader program
-  shaderProgram = createProgram(gl, resources.vs, resources.fs);
+  shaderProgram = createProgram(gl, resources.vs_phong, resources.fs_phong);
 
 
 
@@ -128,38 +128,60 @@ function init(resources) {
       }
 
 
-      //TASK 3-6 create white light node at [0, 2, 2]
-      let light = new LightNode();
-      light.ambient = [0, 0, 0, 1];
-      light.diffuse = [1, 1, 1, 1];
-      light.specular = [1, 1, 1, 1];
-      light.position = [0, 2, 2];
-      light.append(createLightSphere());
-      //TASK 4-1 animated light using rotateLight transformation node
-      rotateLight = new TransformationSGNode(mat4.create(), [
-          light
-      ]);
-      rootNode.append(rotateLight);
+    //TASK 3-6 create white light node at [0, 2, 2]
+    let light = new LightNode();
+    light.ambient = [0, 0, 0, 1];
+    light.diffuse = [1, 1, 1, 1];
+    light.specular = [1, 1, 1, 1];
+    light.position = [0, 1, 1];
+    light.append(createLightSphere());
+    //TASK 4-1 animated light using rotateLight transformation node
+    rotateLight = new TransformationSGNode(mat4.create(), [
+        light
+    ]);
+    rootNode.append(rotateLight);
 
   var quadTransformationMatrix = glm.rotateX(90);
   quadTransformationMatrix = mat4.multiply(mat4.create(), quadTransformationMatrix, glm.translate(0.0,-0.5,0));
   quadTransformationMatrix = mat4.multiply(mat4.create(), quadTransformationMatrix, glm.scale(10.5,10.5,10.5));
 
   var transformationNode = new TransformationSGNode(quadTransformationMatrix);
+
+
   rootNode.append(transformationNode);
-
-  let floor = new RenderSGNode(makeRect(8,8));
-
-  rootNode.append(new TransformationSGNode(glm.transform({translate: [0,0,0], rotateX: -90, scale:3}), [floor]));
-
-  staticColorShaderNode = new ShaderSGNode(createProgram(gl, resources.staticcolorvs, resources.fs));
-  //transformationNode.append(staticColorShaderNode);
-
-  var quadNode = new QuadRenderNode();
-  staticColorShaderNode.append(quadNode);
-
   createSoldier(rootNode);
   createTank(rootNode);
+  {
+    //TASK 2-5 wrap with material node
+    let floor = new MaterialNode([
+      new RenderSGNode(makeRect(1, 1))
+    ]);
+
+    //dark
+    floor.ambient = [0.1, 0.8, 0, 1];
+    floor.diffuse = [0.0, 0.0, 0.0, 1];
+    floor.specular = [0.5, 0.8, 0.5, 1];
+    floor.shininess = 0.7;
+
+    //Wenn man diese 3 zeilen auskommentiert ist der Panzer sichtbar. Wieso?
+    rootNode.append(new TransformationSGNode(glm.transform({ translate: [0,0,0], rotateX: -90, scale: 3}), [
+    floor
+    ]));
+  }
+
+
+
+
+
+  //rootNode.append(new TransformationSGNode(glm.transform({translate: [0,0,0], rotateX: -90, scale:3}), [floor]));
+
+  //staticColorShaderNode = new ShaderSGNode(createProgram(gl, resources.staticcolorvs, resources.fs));
+  //transformationNode.append(staticColorShaderNode);
+
+//  var quadNode = new QuadRenderNode();
+  //staticColorShaderNode.append(quadNode);
+
+
   initInteraction(gl.canvas);
 }
 
@@ -242,10 +264,27 @@ function createTank(rootNode) {
   tankTransformationNode = new TransformationSceneGraphNode(tankTransformationMatrix);
   rootNode.append(tankTransformationNode);*/
 
+
+
   var tankTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateY(animatedAngle));
   tankTransformationMatrix = mat4.multiply(mat4.create(), tankTransformationMatrix, glm.translate(0.3,0.9,0));
   tankTransformationNode = new TransformationSGNode(tankTransformationMatrix);
-  rootNode.append(tankTransformationNode);
+
+  let tankMaterial = new MaterialNode([
+      tankTransformationNode
+     ]);
+
+   //gold
+   tankMaterial.ambient = [0.24725, 0.1995, 0.0745, 1];
+   tankMaterial.diffuse = [0.75164, 0.60648, 0.22648, 1];
+   tankMaterial.specular = [0.628281, 0.555802, 0.366065, 1];
+   tankMaterial.shininess = 0.4;
+
+
+
+  rootNode.append(
+      tankMaterial
+    );
 
   //Drehbares Teil Transformation
   var tankHeadTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateY(animatedAngle));
@@ -368,9 +407,9 @@ function render(timeInMilliseconds) {
   gl.enable(gl.DEPTH_TEST);
 
   //TASK 1-1
-  gl.enable(gl.BLEND);
+//  gl.enable(gl.BLEND);
   //TASK 1-2
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+//  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
   //activate this shader program
   gl.useProgram(shaderProgram);
@@ -432,8 +471,11 @@ function render(timeInMilliseconds) {
   {
     context.viewMatrix = mat4.lookAt(mat4.create(), [4,2,0], [0,0.5,0], [0,1,0]);
   }*/
-//  console.log(timeInMilliseconds);
+//  console.log(timeInMilliseconds)
+  context.viewMatrix = mat4.lookAt(mat4.create(), [0,1,-0], [-0.0001*timeInMilliseconds+7,0,0], [0,1,0]);
+/*
   switch (true) {
+
       case (timeInMilliseconds < 8000):
           context.viewMatrix = mat4.lookAt(mat4.create(), [0,1,-0], [-0.0001*timeInMilliseconds+7,0,0], [0,1,0]);
           break;
@@ -449,7 +491,7 @@ function render(timeInMilliseconds) {
       default:
           context.viewMatrix = mat4.lookAt(mat4.create(), [0,30,1], [0,0,0], [0,1,0]);
           break;
-  }
+  }*/
 
   //TASK 0-2 rotate whole scene according to the mouse rotation stored in
   //camera.rotation.x and camera.rotation.y
@@ -461,7 +503,7 @@ function render(timeInMilliseconds) {
   //rotateNode.matrix = glm.rotateY(timeInMilliseconds*-0.01);
   if(timeInMilliseconds<30000)
   {
-    staticColorShaderNode.render(context);
+  //  staticColorShaderNode.render(context);
     rootNode.render(context);
   //request another render call as soon as possible
     requestAnimationFrame(render);
@@ -489,7 +531,7 @@ function setUpModelViewMatrix(sceneMatrix, viewMatrix) {
 function createSceneGraphContext(gl, shader) {
 
   //create a default projection matrix
-  projectionMatrix = mat4.perspective(mat4.create(), fieldOfViewInRadians, aspectRatio, 0.01, 10);
+  projectionMatrix = mat4.perspective(mat4.create(), fieldOfViewInRadians, aspectRatio, 0.01, 100);
   //set projection matrix
   gl.uniformMatrix4fv(gl.getUniformLocation(shader, 'u_projection'), false, projectionMatrix);
 
@@ -572,6 +614,7 @@ class QuadRenderNode extends TransformationSGNode {
     gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(positionLocation);
 
+
     var colorLocation = gl.getAttribLocation(context.shader, 'a_color');
     gl.bindBuffer(gl.ARRAY_BUFFER, quadColorBuffer);
     gl.vertexAttribPointer(colorLocation, 4, gl.FLOAT, false, 0, 0);
@@ -588,13 +631,51 @@ class QuadRenderNode extends TransformationSGNode {
   }
 }
 
+
+/**
+ * a material node contains the material properties for the underlying models
+ */
+class MaterialNode extends SGNode {
+
+  constructor(children) {
+    super(children);
+    this.ambient = [0.2, 0.2, 0.2, 1.0];
+    this.diffuse = [0.8, 0.8, 0.8, 1.0];
+    this.specular = [0, 0, 0, 1];
+    this.emission = [0, 0, 0, 1];
+    this.shininess = 0.0;
+    this.uniform = 'u_material';
+  }
+
+  setMaterialUniforms(context) {
+    const gl = context.gl,
+      shader = context.shader;
+
+    //TASK 2-3 set uniforms
+    //hint setting a structure element using the dot notation, e.g. u_material.test
+    gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.ambient'), this.ambient);
+    gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.diffuse'), this.diffuse);
+    gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.specular'), this.specular);
+    gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.emission'), this.emission);
+    gl.uniform1f(gl.getUniformLocation(shader, this.uniform+'.shininess'), this.shininess);
+  }
+
+  render(context) {
+    this.setMaterialUniforms(context);
+
+    //render children
+    super.render(context);
+  }
+}
+
 //TASK 4-1
 /**
  * a cube node that renders a cube at its local origin
  */
 class CubeRenderNode extends TransformationSGNode {
 
-  constructor(color) { //constructor(matrix ,color) {
+  constructor(color)
+  { //constructor(matrix ,color) {
     super();
     if(color != null)
     {
@@ -606,37 +687,35 @@ class CubeRenderNode extends TransformationSGNode {
 
   }
 
+
+
   render(context) {
 
-    //setting the model view and projection matrix on shader
-    setUpModelViewMatrix(context.sceneMatrix, context.viewMatrix);
+      //setting the model view and projection matrix on shader
+      setUpModelViewMatrix(context.sceneMatrix, context.viewMatrix);
 
-    var positionLocation = gl.getAttribLocation(context.shader, 'a_position');
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexBuffer);
-    gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false,0,0) ;
-    gl.enableVertexAttribArray(positionLocation);
+      var positionLocation = gl.getAttribLocation(context.shader, 'a_position');
+      gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexBuffer);
+      gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false,0,0) ;
+      gl.enableVertexAttribArray(positionLocation);
 
-    var colorLocation = gl.getAttribLocation(context.shader, 'a_color');
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeColorBuffer);
-    gl.vertexAttribPointer(colorLocation, 3, gl.FLOAT, false,0,0) ;
-    gl.enableVertexAttribArray(colorLocation);
+    /*  var colorLocation = gl.getAttribLocation(context.shader, 'a_color');
+      gl.bindBuffer(gl.ARRAY_BUFFER, cubeColorBuffer);
+      gl.vertexAttribPointer(colorLocation, 3, gl.FLOAT, false,0,0) ;
+      gl.enableVertexAttribArray(colorLocation);*/
 
-    //set alpha value for blending
-    //TASK 1-3
-    gl.uniform1f(gl.getUniformLocation(context.shader, 'u_alpha'), 1);
+      //set alpha value for blending
+      //TASK 1-3
+      gl.uniform1f(gl.getUniformLocation(context.shader, 'u_alpha'), 1);
 
-    var fColorLocation = gl.getUniformLocation(shaderProgram, 'a_color');
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeIndexBuffer);
+      gl.drawElements(gl.TRIANGLES, cubeIndices.length, gl.UNSIGNED_SHORT, 0); //LINE_STRIP
 
-    gl.uniform3f(fColorLocation,this.nodeColor[0],this.nodeColor[1],this.nodeColor[2] );
+      //render children
+      super.render(context);
+    }
 
-  //  gl.uniform4f(fColorLocation, 0.9, 0.44, 0.86, 1);
 
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeIndexBuffer);
-    gl.drawElements(gl.TRIANGLES, cubeIndices.length, gl.UNSIGNED_SHORT, 0); //LINE_STRIP
-
-    //render children
-    super.render(context);
-  }
 }
 
 //TASK 3-0
