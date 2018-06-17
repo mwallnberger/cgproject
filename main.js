@@ -107,10 +107,6 @@ function init(resources) {
   //in WebGL / OpenGL3 we have to create and use our own shaders for the programmable pipeline
   //create the shader program
   shaderProgram = createProgram(gl, resources.vs_phong, resources.fs_phong);
-
-
-
-
   //set buffers for quad
   initQuadBuffer();
   //set buffers for cube
@@ -151,27 +147,20 @@ function init(resources) {
   rootNode.append(transformationNode);
   createSoldier(rootNode);
   createTank(rootNode);
-  {
+
     //TASK 2-5 wrap with material node
-    let floor = new MaterialNode([
-      new RenderSGNode(makeRect(1, 1))
-    ]);
+  let floor = new MaterialNode([
+    new RenderSGNode(makeRect(1, 1))
+  ]);
+  floor.ambient = [0.2, 0.8, 0, 1];
+  floor.diffuse = [0.1, 0.0, 0.0, 1];
+  floor.specular = [0.5, 0.7, 0.5, 1];
+  floor.shininess = 0.7;
 
-    //dark
-    floor.ambient = [0.1, 0.8, 0, 1];
-    floor.diffuse = [0.0, 0.0, 0.0, 1];
-    floor.specular = [0.5, 0.8, 0.5, 1];
-    floor.shininess = 0.7;
-
-    //Wenn man diese 3 zeilen auskommentiert ist der Panzer sichtbar. Wieso?
-    rootNode.append(new TransformationSGNode(glm.transform({ translate: [0,0,0], rotateX: -90, scale: 3}), [
-    floor
-    ]));
-  }
-
-
-
-
+  //Wenn man diese 3 Zeilen auskommentiert ist der Panzer sichtbar. Es tritt mit diesen Zeilen eine Warnung auf "Offscreen-For-WebGL-0000021179064380]GL ERROR :GL_INVALID_OPERATION : glDrawElements: attempt to access out of range vertices in attribute 1"
+  rootNode.append(new TransformationSGNode(glm.transform({ translate: [0,0,0], rotateX: -90, scale: 3}), [
+  floor
+  ]));
 
   //rootNode.append(new TransformationSGNode(glm.transform({translate: [0,0,0], rotateX: -90, scale:3}), [floor]));
 
