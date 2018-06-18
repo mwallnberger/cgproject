@@ -302,9 +302,9 @@ function createTank(rootNode) {
 	]);
 
 	//gold
-	tankMaterial.ambient = [0.2, 0.2, 0.90, 1];
+	tankMaterial.ambient = [0.2, 0.2, 0.9, 1];
 	tankMaterial.diffuse = [0.2, 0.7, 0.9, 1];
-	tankMaterial.specular = [0.2, 0.2, 0.90, 1];
+	tankMaterial.specular = [0.2, 0.2, 0.9, 1];
 	tankMaterial.shininess = 0.4;
 
 
@@ -482,6 +482,7 @@ function render(timeInMilliseconds) {
 
 	context.projectionMatrix = mat4.perspective(mat4.create(), glm.deg2rad(30), gl.drawingBufferWidth / gl.drawingBufferHeight, 0.01, 100);
 
+  displayText('Special Effect');
 	switch (true) {
 		case (timeInMilliseconds < 8000):
 			context.viewMatrix = mat4.lookAt(mat4.create(), [0, 1, -0], [-0.0001 * timeInMilliseconds + 7, 0, 0], [0, 1, 0]);
