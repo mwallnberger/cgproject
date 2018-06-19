@@ -36,6 +36,11 @@ var cubeVertexBuffer, cubeColorBuffer, cubeIndexBuffer;
 
 var complexObjectVertexBuffer, complexObjectNormalsBuffer, complexObjectIndexBuffer
 
+//textures
+var renderTargetColorTexture;
+var renderTargetDepthTexture;
+var floorTexture;
+
 var quadVertices = new Float32Array([-1.0, -1.0,
 	1.0, -1.0, -1.0, 1.0, -1.0, 1.0,
 	1.0, -1.0,
@@ -260,10 +265,12 @@ loadResources({
 	fs: 'shader/simple.fs.glsl',
 	vs_phong: 'shader/phong.vs.glsl',
 	fs_phong: 'shader/phong.fs.glsl',
+	vs_phongTexture: 'shader/phongTexture.vs.glsl',
+	fs_phongTexture: 'shader/phongTexture.fs.glsl',
+	floortexture: 'models/grass.png',
 	vs_single: 'shader/single.vs.glsl',
 	fs_single: 'shader/single.fs.glsl',
-	//TASK 5-3
-	staticcolorvs: 'shader/static_color.vs.glsl'
+
 }).then(function(resources /*an object containing our keys with the loaded resources*/ ) {
 	init(resources);
 
@@ -274,6 +281,15 @@ loadResources({
 /**
  * initializes OpenGL context, compile shader, and load buffers
  */
+
+ function makeFloor() {
+   var floor = makeRect(2, 2);
+   //TASK 3: adapt texture coordinates
+   floor.texture = [0, 0,   1, 0,   1, 1,   0, 1];
+   return floor;
+ }
+
+
 function init(resources) {
 
 	//create a GL context
@@ -282,12 +298,14 @@ function init(resources) {
 	//in WebGL / OpenGL3 we have to create and use our own shaders for the programmable pipeline
 	//create the shader program
 	shaderProgram = createProgram(gl, resources.vs_phong, resources.fs_phong);
+
 	//set buffers for quad
 	initQuadBuffer();
 	//set buffers for cube
 	initCubeBuffer();
 
   initComplexObjectBuffer();
+	initTextures(resources);
 
 	//create scenegraph
 	rootNode = new ShaderSGNode(shaderProgram);
@@ -301,7 +319,8 @@ function init(resources) {
 	}
 
 
-	//TASK 3-6 create white light node at [0, 2, 2]
+
+
 	let light = new LightNode();
 	light.ambient = [0, 0, 0, 1];
 	light.diffuse = [1, 1, 1, 1];
@@ -325,22 +344,28 @@ function init(resources) {
 	createSoldier(rootNode);
 	createTank(rootNode);
 
+
 	//TASK 2-5 wrap with material node
-	let floor = new MaterialNode([
-		new RenderSGNode(makeRect(5, 5))
-	]);
+	let floor = new MaterialSGNode(new TextureSGNode(floorTexture,2,
+                new RenderSGNode(makeFloor())
+              ));
+
+
+
+//	var shaderTexture = new ShaderSGNode(createProgram(gl, resources.vs_phongTexture, resources.fs_phongTexture),[floor]);
+
+
 	floor.ambient = [0.2, 0.8, 0, 1];
 	floor.diffuse = [0.1, 0.8, 0.0, 1];
 	floor.specular = [0.0, 0.7, 0.0, 1];
 	floor.shininess = 0.9;
 
+
 	rootNode.append(new TransformationSGNode(glm.transform({
 		translate: [0, 0, 0],
 		rotateX: -90,
 		scale: 3
-	}), [
-		floor
-	]));
+	}), [floor]));
 
   //Complex object
 
@@ -383,6 +408,31 @@ function init(resources) {
   rootNode.append(billboardTransformationNode);
   */
 	initInteraction(gl.canvas);
+}
+
+function initTextures(resources)
+{
+  //create texture object
+  floorTexture = gl.createTexture();
+  //select a texture unit
+  gl.activeTexture(gl.TEXTURE0);
+  //bind texture to active texture unit
+  gl.bindTexture(gl.TEXTURE_2D, floorTexture);
+  //set sampling parameters
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  //TASK 4: change texture sampling behaviour
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  //upload texture data
+  gl.texImage2D(gl.TEXTURE_2D, //texture unit target == texture type
+    0, //level of detail level (default 0)
+    gl.RGBA, //internal format of the data in memory
+    gl.RGBA, //image format (should match internal format)
+    gl.UNSIGNED_BYTE, //image data type
+    resources.floortexture); //actual image data
+  //clean up/unbind texture
+  gl.bindTexture(gl.TEXTURE_2D, null);
 }
 
 // copied from exercise 4 might need to be adjusted
@@ -838,8 +888,17 @@ class QuadRenderNode extends TransformationSGNode {
 		gl.vertexAttribPointer(colorLocation, 4, gl.FLOAT, false, 0, 0);
 		gl.enableVertexAttribArray(colorLocation);
 
+		var texCoordAttribute = gl.getAttribLocation(context.shader, 'a_texCoord');
+		gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesNormalBuffer); //Falsch!! War nur ein schneller Fix
+		gl.vertexAttribPointer(texCoordAttribute, 3, gl.FLOAT, false, 0, 0);
+		gl.enableVertexAttribArray(texCoordAttribute);
+
 		//TASK 1-3
 		gl.uniform1f(gl.getUniformLocation(context.shader, 'u_alpha'), 0);
+
+		var someVec2Loc = gl.getAttribLocation(context.shader, 'a_texCoord');
+		gl.uniform2fv(someVec2Loc, [0, 0,   1, 0,   1, 1,   0, 1]);  // set the entire array of u_someVec2
+
 
 		// draw the bound data as 6 vertices = 2 triangles starting at index 0
 		gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -923,6 +982,12 @@ class CubeRenderNode extends TransformationSGNode {
 
 		//set alpha value for blending
 		//TASK 1-3
+
+		var texCoordAttribute = gl.getAttribLocation(context.shader, 'a_texCoord');
+		gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesNormalBuffer); //Falsch!! War nur ein schneller Fix
+		gl.vertexAttribPointer(texCoordAttribute, 3, gl.FLOAT, false, 0, 0);
+		gl.enableVertexAttribArray(texCoordAttribute);
+
 		gl.uniform1f(gl.getUniformLocation(context.shader, 'u_alpha'), 1);
 
 		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeIndexBuffer);
@@ -967,6 +1032,10 @@ class ComplexObjectRenderNode extends TransformationSGNode {
 		  gl.vertexAttribPointer(colorLocation, 3, gl.FLOAT, false,0,0) ;
 		  gl.enableVertexAttribArray(colorLocation);*/
 
+		var texCoordAttribute = gl.getAttribLocation(context.shader, 'a_texCoord');
+		gl.bindBuffer(gl.ARRAY_BUFFER, complexObjectNormalsBuffer); //Falsch!! War nur ein schneller Fix
+		gl.vertexAttribPointer(texCoordAttribute, 3, gl.FLOAT, false, 0, 0);
+		gl.enableVertexAttribArray(texCoordAttribute);
 
 		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, complexObjectIndexBuffer);
 		gl.drawElements(gl.TRIANGLES, complexObjectIndices.length, gl.UNSIGNED_SHORT, 0); //LINE_STRIP
@@ -976,6 +1045,39 @@ class ComplexObjectRenderNode extends TransformationSGNode {
 	}
 
 
+}
+
+//a scene graph node for setting texture parameters
+class TextureSGNode extends SGNode {
+  constructor(texture, textureunit, children ) {
+      super(children);
+      this.texture = texture;
+      this.textureunit = textureunit;
+  }
+
+  render(context)
+  {
+    //tell shader to use our texture; alternatively we could use two phong shaders: one with and one without texturing support
+    gl.uniform1i(gl.getUniformLocation(context.shader, 'u_enableObjectTexture'), 1);
+
+    //set shader parameters
+    //TASK 1: set texture unit to sampler in shader
+    gl.uniform1i(gl.getUniformLocation(context.shader, 'u_tex'), this.textureunit);
+    //activate/select texture unit and bind texture
+    //TASK 1: activate/select texture unit and bind texture
+    gl.activeTexture(gl.TEXTURE0 + this.textureunit);
+    gl.bindTexture(gl.TEXTURE_2D, this.texture);
+
+    //render children
+    super.render(context);
+
+    //clean up
+    //TASK 1: activate/select texture unit and bind null
+    gl.activeTexture(gl.TEXTURE0 + this.textureunit);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    //disable texturing in shader
+    gl.uniform1i(gl.getUniformLocation(context.shader, 'u_enableObjectTexture'), 0);
+  }
 }
 
 

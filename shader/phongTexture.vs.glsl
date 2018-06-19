@@ -21,8 +21,9 @@ varying vec3 v_normalVec;
 varying vec3 v_eyeVec;
 varying vec3 v_lightVec;
 varying vec3 v_light2Vec;
-varying vec2 v_texCoord;
 
+
+varying vec2 v_texCoord;
 void main() {
 	vec4 eyePosition = u_modelView * vec4(a_position,1);
 
