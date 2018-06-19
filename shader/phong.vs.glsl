@@ -32,5 +32,6 @@ void main() {
 	//TASK 5-4 second light source position
 	v_light2Vec = u_light2Pos - eyePosition.xyz;
 
+
 	gl_Position = u_projection * eyePosition;
 }

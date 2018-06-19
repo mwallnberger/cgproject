@@ -34,6 +34,8 @@ var soldierHeadTransformationNode;
 var quadVertexBuffer, quadColorBuffer;
 var cubeVertexBuffer, cubeColorBuffer, cubeIndexBuffer;
 
+var complexObjectVertexBuffer, complexObjectNormalsBuffer, complexObjectIndexBuffer
+
 var quadVertices = new Float32Array([-1.0, -1.0,
 	1.0, -1.0, -1.0, 1.0, -1.0, 1.0,
 	1.0, -1.0,
@@ -49,45 +51,187 @@ var quadColors = new Float32Array([
 	0, 0, 0, 1
 ]);
 
+
+var complexObjectVertices = new Float32Array([
+  //P_Vorne
+  -1.0, 0.0, 0,
+   1.0, 0.0, 0,
+  -0, 1.0, -1.0,
+  //P_Rechts
+  1.0, 0.0, 0,
+   1.0, 0.0, -2.0,
+  -0, 1.0, -1.0,
+  //P_Links
+  -1.0, 0.0, 0,
+   -1.0, 0.0, -2.0,
+  -0, 1.0, -1.0,
+  //P_Hinten
+  -1.0, -0.0, -2.0,
+   1.0, -0.0, -2.0,
+  -0, 1.0, -1.0,
+  //B_Vorne
+  -1.0, 0.0, 0,
+   1.0, 0.0, 0,
+  -1.0, -1.0, -0.0,
+  1.0, -1.0, -0.0,
+  //B_Hinten
+  -1.0, 0.0, -2,
+   1.0, 0.0, -2,
+  -1.0, -1.0, -2.0,
+  1.0, -1.0, -2.0,
+
+  //B_Links
+  -1.0, 0.0, 0, //vo
+  -1.0, -1.0, 0,  //vu
+  -1.0, -1.0, -2.0, //hu
+  -1.0, 0.0, -2.0, //ho
+
+  //B_Rechts
+  1.0, 0.0, 0, //vo
+  1.0, -1.0, 0,  //vu
+  1.0, -1.0, -2.0, //hu
+  1.0, 0.0, -2.0, //ho
+
+  //Boden
+  1.0, -1.0, 0,
+  -1.0, -1.0, 0,
+  -1.0, -1.0, -2.0,
+  1.0, -1.0, -2.0,
+]);
+
+
+var complexObjectIndices = new Float32Array([
+	0,1,2,   //Vorne
+  3,4,5,   //Rechts
+  6,7,8,  //Links
+  9,10,11,  //hinten
+  12,13,14,  13,14,15, // B_Vorne
+  16,17,18,  17,18,19,  //B_Hinten
+  20,21,22,  22,23,20, //B_links
+  24,25,26,  26,27,24, //B_Rechts
+  28,29,30,    30,31,28 //Boden
+ ]);
+
+var complexObjectNormals = new Float32Array([
+	0.0, 0.707, 0.707, //Vorne
+  0.0, 0.707, 0.707,
+  0.0, 0.707, 0.707,
+
+  0.707, 0.707, 0.0,  //Rechts
+  0.707, 0.707, 0.0,
+  0.707, 0.707, 0.0,
+
+  -0.707, 0.707, 0.0,  //links
+  -0.707, 0.707, 0.0,
+  -0.707, 0.707, 0.0,
+
+  0.0, 0.707, -0.707,   //Hinten
+  0.0, 0.707, -0.707,
+  0.0, 0.707, -0.707,
+
+  0.0, 0.0, 1.0, //Vorne
+  0.0, 0.0, 1.0,
+  0.0, 0.0, 1.0,
+  0.0, 0.0, 1.0,
+
+  0.0, 0.0, -1.0, //Hinten
+  0.0, 0.0, -1.0,
+  0.0, 0.0, -1.0,
+  0.0, 0.0, -1.0,
+
+  -1.0, 0.0, 0.0, //Links
+  -1.0, 0.0, 0.0,
+  -1.0, 0.0, 0.0,
+  -1.0, 0.0, 0.0,
+
+  1.0, 0.0, 0.0, //Rechts
+  1.0, 0.0, 0.0,
+  1.0, 0.0, 0.0,
+  1.0, 0.0, 0.0,
+
+  0.0, -1.0, 0.0, //Boden
+  0.0, -1.0, 0.0,
+  0.0, -1.0, 0.0,
+  0.0, -1.0, 0.0,
+
+]);
+
 var s = 0.3; //size of cube
-var cubeVertices = new Float32Array([-s, -s, -s, s, -s, -s, s, s, -s, -s, s, -s, -s, -s, s, s, -s, s, s, s, s, -s, s, s, -s, -s, -s, -s, s, -s, -s, s, s, -s, -s, s,
-	s, -s, -s, s, s, -s, s, s, s, s, -s, s, -s, -s, -s, -s, -s, s, s, -s, s, s, -s, -s, -s, s, -s, -s, s, s, s, s, s, s, s, -s,
+var cubeVertices = new Float32Array([
+  //Hinten
+  -s, -s, -s,
+   s, -s, -s,
+    s, s, -s,
+    -s, s, -s,
+
+    //Vorne
+    -s, -s, s,
+    s, -s, s,
+     s, s, s,
+     -s, s, s,
+
+     //Links
+      -s, -s,-s,
+      -s, s,-s,
+      -s, s,s,
+      -s, -s,s,
+
+      //Rechts
+      s, -s, -s,
+      s, s,-s,
+       s, s,s,
+       s, -s,s,
+
+       //Unten
+       -s, -s,-s,
+        -s, -s,s,
+         s, -s,s,
+          s, -s,-s,
+
+          //oben
+          -s, s,-s,
+          -s, s,s,
+          s, s,s,
+           s, s, -s,
 ]);
 
 var cubeNormals = new Float32Array([
+  // hinten
+	0.0, 0.0, -1.0,
+	0.0, 0.0, -1.0,
+	0.0, 0.0, -1.0,
+	0.0, 0.0, -1.0,
+
+
 	// vorne
 	0.0, 0.0, 1.0,
 	0.0, 0.0, 1.0,
 	0.0, 0.0, 1.0,
 	0.0, 0.0, 1.0,
 
-	// hinten
-	0.0, 0.0, -1.0,
-	0.0, 0.0, -1.0,
-	0.0, 0.0, -1.0,
-	0.0, 0.0, -1.0,
+  // links
+  -1.0, 0.0, 0.0,
+  -1.0, 0.0, 0.0,
+  -1.0, 0.0, 0.0,
+  -1.0, 0.0, 0.0,
+
+  // rechts
+  1.0, 0.0, 0.0,
+  1.0, 0.0, 0.0,
+  1.0, 0.0, 0.0,
+  1.0, 0.0, 0.0,
+
+  // unten
+	0.0, -1.0, 0.0,
+	0.0, -1.0, 0.0,
+	0.0, -1.0, 0.0,
+	0.0, -1.0, 0.0,
 
 	// oben
 	0.0, 1.0, 0.0,
 	0.0, 1.0, 0.0,
 	0.0, 1.0, 0.0,
 	0.0, 1.0, 0.0,
-
-	// unten
-	0.0, -1.0, 0.0,
-	0.0, -1.0, 0.0,
-	0.0, -1.0, 0.0,
-	0.0, -1.0, 0.0,
-
-
-	// links
-	-1.0, 0.0, 0.0, -1.0, 0.0, 0.0, -1.0, 0.0, 0.0, -1.0, 0.0, 0.0,
-
-	// rechts
-	1.0, 0.0, 0.0,
-	1.0, 0.0, 0.0,
-	1.0, 0.0, 0.0,
-	1.0, 0.0, 0.0,
 
 
 ]);
@@ -143,6 +287,8 @@ function init(resources) {
 	//set buffers for cube
 	initCubeBuffer();
 
+  initComplexObjectBuffer();
+
 	//create scenegraph
 	rootNode = new ShaderSGNode(shaderProgram);
 
@@ -188,15 +334,54 @@ function init(resources) {
 	floor.specular = [0.0, 0.7, 0.0, 1];
 	floor.shininess = 0.9;
 
-	//Wenn man diese 3 Zeilen auskommentiert ist der Panzer sichtbar. Es tritt mit diesen Zeilen eine Warnung auf "Offscreen-For-WebGL-0000021179064380]GL ERROR :GL_INVALID_OPERATION : glDrawElements: attempt to access out of range vertices in attribute 1"
 	rootNode.append(new TransformationSGNode(glm.transform({
-		translate: [0, 0, 0],
+		translate: [0, -10, 0],
 		rotateX: -90,
 		scale: 3
 	}), [
 		floor
 	]));
 
+  //Complex object
+
+  var complexObjectNode = new ComplexObjectRenderNode();
+
+  let complexObject = new MaterialNode([
+		complexObjectNode
+	]);
+
+  complexObjectNode.ambient = [0.2, 0.8, 0, 1];
+  complexObjectNode.diffuse = [0.1, 0.8, 0.0, 1];
+  complexObjectNode.specular = [0.1, 0.7, 0.0, 1];
+  complexObjectNode.shininess = 0.8;
+
+  rootNode.append(new TransformationSGNode(glm.transform({
+		translate: [0.5, 0.5, 0],
+		rotateX: 0,
+		scale: 1.0
+	}), [
+		complexObject
+	]));
+
+
+
+
+  /*
+  //Billboard
+  let billboard = new MaterialNode([
+    new RenderSGNode(makeRect(0.1, 0.1))
+  ]);
+  billboard.ambient = [0.2, 0.8, 0, 1];
+  billboard.diffuse = [0.1, 0.8, 0.0, 1];
+  billboard.specular = [0.0, 0.7, 0.0, 1];
+  billboard.shininess = 0.9;
+
+
+  var billboardTransformationMatrix = glm.transform({ translate: [-2, 1, 0], rotateX: 0, rotateY: 90, scale: 3 })
+  billboardTransformationNode = new TransformationSGNode(billboardTransformationMatrix,[billboard]);
+
+  rootNode.append(billboardTransformationNode);
+  */
 	initInteraction(gl.canvas);
 }
 
@@ -228,7 +413,6 @@ function initInteraction(canvas) {
 			x: mouse.pos.x - pos.x,
 			y: mouse.pos.y - pos.y
 		};
-		//TASK 0-1 add delta mouse to camera.rotation if the left mouse button is pressed
 		if (mouse.leftButtonDown) {
 			camera.rotation.x += delta.x;
 			camera.rotation.y += delta.y;
@@ -282,6 +466,22 @@ function initCubeBuffer() {
 	cubeIndexBuffer = gl.createBuffer();
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeIndexBuffer);
 	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cubeIndices), gl.STATIC_DRAW);
+}
+
+function initComplexObjectBuffer() {
+
+	complexObjectVertexBuffer = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, complexObjectVertexBuffer);
+	gl.bufferData(gl.ARRAY_BUFFER, complexObjectVertices, gl.STATIC_DRAW);
+
+  complexObjectNormalsBuffer = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, complexObjectNormalsBuffer);
+	gl.bufferData(gl.ARRAY_BUFFER, complexObjectNormals, gl.STATIC_DRAW);
+
+
+  complexObjectIndexBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, complexObjectIndexBuffer);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(complexObjectIndices), gl.STATIC_DRAW);
 }
 
 function createTank(rootNode) {
@@ -439,6 +639,8 @@ function render(timeInMilliseconds) {
 	//activate this shader program
 	gl.useProgram(shaderProgram);
 
+
+
 	//update transformation of tank for rotation animation
 	var tankTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), mat4.create());
 	tankTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(-0.00028 * timeInMilliseconds + 6, 0.0, 0));
@@ -483,6 +685,10 @@ function render(timeInMilliseconds) {
 	context.projectionMatrix = mat4.perspective(mat4.create(), glm.deg2rad(30), gl.drawingBufferWidth / gl.drawingBufferHeight, 0.01, 100);
 
   displayText('Special Effect');
+
+  //MODE
+//  context.viewMatrix = mat4.lookAt(mat4.create(), [4, 2, 0], [0, 0.5, 0], [0, 1, 0]);
+/*
 	switch (true) {
 		case (timeInMilliseconds < 8000):
 			context.viewMatrix = mat4.lookAt(mat4.create(), [0, 1, -0], [-0.0001 * timeInMilliseconds + 7, 0, 0], [0, 1, 0]);
@@ -499,13 +705,22 @@ function render(timeInMilliseconds) {
 		default:
 			context.viewMatrix = mat4.lookAt(mat4.create(), [0, 30, 1], [0, 0, 0], [0, 1, 0]);
 			break;
-	}
+	}*/
+
+
 
 	context.sceneMatrix = mat4.multiply(mat4.create(),
 		glm.rotateY(camera.rotation.x),
 		glm.rotateX(camera.rotation.y));
 
-	if (timeInMilliseconds < 30000) {
+
+
+
+
+
+
+
+	if (timeInMilliseconds < 3000000) {
 		//  staticColorShaderNode.render(context);
 		rootNode.render(context);
 		//request another render call as soon as possible
@@ -671,7 +886,6 @@ class MaterialNode extends SGNode {
 	}
 }
 
-//TASK 4-1
 /**
  * a cube node that renders a cube at its local origin
  */
@@ -686,9 +900,6 @@ class CubeRenderNode extends TransformationSGNode {
 		}
 
 	}
-
-
-
 	render(context) {
 
 		//setting the model view and projection matrix on shader
@@ -723,6 +934,50 @@ class CubeRenderNode extends TransformationSGNode {
 
 
 }
+
+class ComplexObjectRenderNode extends TransformationSGNode {
+
+	constructor(color) { //constructor(matrix ,color) {
+		super();
+		if (color != null) {
+			this.nodeColor = color;
+		} else {
+			this.nodeColor = [1, 1, 1];
+		}
+
+	}
+	render(context) {
+
+		//setting the model view and projection matrix on shader
+		setUpModelViewMatrix(context.sceneMatrix, context.viewMatrix);
+
+		var positionLocation = gl.getAttribLocation(context.shader, 'a_position');
+		gl.bindBuffer(gl.ARRAY_BUFFER, complexObjectVertexBuffer);
+		gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0);
+		gl.enableVertexAttribArray(positionLocation);
+
+
+		var vertexNormalAttribute = gl.getAttribLocation(context.shader, 'a_normal');
+		gl.bindBuffer(gl.ARRAY_BUFFER, complexObjectNormalsBuffer);
+		gl.vertexAttribPointer(vertexNormalAttribute, 3, gl.FLOAT, false, 0, 0);
+		gl.enableVertexAttribArray(vertexNormalAttribute);
+
+		/*  var colorLocation = gl.getAttribLocation(context.shader, 'a_color');
+		  gl.bindBuffer(gl.ARRAY_BUFFER, cubeColorBuffer);
+		  gl.vertexAttribPointer(colorLocation, 3, gl.FLOAT, false,0,0) ;
+		  gl.enableVertexAttribArray(colorLocation);*/
+
+
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, complexObjectIndexBuffer);
+		gl.drawElements(gl.TRIANGLES, complexObjectIndices.length, gl.UNSIGNED_SHORT, 0); //LINE_STRIP
+
+		//render children
+		super.render(context);
+	}
+
+
+}
+
 
 //TASK 3-0
 /**
