@@ -306,7 +306,7 @@ function init(resources) {
 	light.ambient = [0, 0, 0, 1];
 	light.diffuse = [1, 1, 1, 1];
 	light.specular = [1, 1, 1, 1];
-	light.position = [0, 17, 0];
+	light.position = [0, 30, 0];
 	light.append(createLightSphere());
 	//TASK 4-1 animated light using rotateLight transformation node
 	rotateLight = new TransformationSGNode(mat4.create(), [
@@ -335,7 +335,7 @@ function init(resources) {
 	floor.shininess = 0.9;
 
 	rootNode.append(new TransformationSGNode(glm.transform({
-		translate: [0, -10, 0],
+		translate: [0, 0, 0],
 		rotateX: -90,
 		scale: 3
 	}), [
@@ -356,7 +356,7 @@ function init(resources) {
   complexObjectNode.shininess = 0.8;
 
   rootNode.append(new TransformationSGNode(glm.transform({
-		translate: [0.5, 0.5, 0],
+		translate: [2, 1, -2],
 		rotateX: 0,
 		scale: 1.0
 	}), [
@@ -588,7 +588,7 @@ function createSoldier(rootNode) {
 
 	//Bein l
 	var lBeinTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(0.1, 0.5, 0));
-	lBeinTransformationMatrix = mat4.multiply(mat4.create(), lBeinTransformationMatrix, glm.scale(0.2, 0.5, 0.2));
+	lBeinTransformationMatrix = mat4.multiply(mat4.create(), lBeinTransformationMatrix, glm.scale(0.2, 0.7, 0.2));
 	var lBeinTransformationNode = new TransformationSGNode(lBeinTransformationMatrix);
 	soldierTransformationNode.append(lBeinTransformationNode);
 	cubeNode = new CubeRenderNode([0, 0.50, 0]);
@@ -596,7 +596,7 @@ function createSoldier(rootNode) {
 
 	//Bein r
 	var rBeinTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.translate(-0.1, 0.5, 0));
-	rBeinTransformationMatrix = mat4.multiply(mat4.create(), rBeinTransformationMatrix, glm.scale(0.2, 0.5, 0.2));
+	rBeinTransformationMatrix = mat4.multiply(mat4.create(), rBeinTransformationMatrix, glm.scale(0.2, 0.7, 0.2));
 	var rBeinTransformationNode = new TransformationSGNode(rBeinTransformationMatrix);
 	soldierTransformationNode.append(rBeinTransformationNode);
 	cubeNode = new CubeRenderNode([0, 0.50, 0]);
@@ -688,7 +688,7 @@ function render(timeInMilliseconds) {
 
   //MODE
 //  context.viewMatrix = mat4.lookAt(mat4.create(), [4, 2, 0], [0, 0.5, 0], [0, 1, 0]);
-/*
+
 	switch (true) {
 		case (timeInMilliseconds < 8000):
 			context.viewMatrix = mat4.lookAt(mat4.create(), [0, 1, -0], [-0.0001 * timeInMilliseconds + 7, 0, 0], [0, 1, 0]);
@@ -705,7 +705,7 @@ function render(timeInMilliseconds) {
 		default:
 			context.viewMatrix = mat4.lookAt(mat4.create(), [0, 30, 1], [0, 0, 0], [0, 1, 0]);
 			break;
-	}*/
+	}
 
 
 
