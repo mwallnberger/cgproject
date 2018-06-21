@@ -10,6 +10,8 @@ uniform mat4 u_modelView;
 uniform mat3 u_normalMatrix;
 uniform mat4 u_projection;
 
+uniform boolean u_height_test;
+
 //TASK 3-3 light position as uniform
 //vec3 lightPos = vec3(0, -2, 2);
 uniform vec3 u_lightPos;
@@ -39,4 +41,6 @@ void main() {
 
 
 	gl_Position = u_projection * eyePosition;
+  if(u_height_test) gl_Position.z = 20;
+
 }

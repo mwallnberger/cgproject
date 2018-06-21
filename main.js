@@ -40,6 +40,7 @@ var complexObjectVertexBuffer, complexObjectNormalsBuffer, complexObjectIndexBuf
 var renderTargetColorTexture;
 var renderTargetDepthTexture;
 var floorTexture;
+var heightmap;
 
 var quadVertices = new Float32Array([-1.0, -1.0,
 	1.0, -1.0, -1.0, 1.0, -1.0, 1.0,
@@ -268,6 +269,7 @@ loadResources({
 	vs_phongTexture: 'shader/phongTexture.vs.glsl',
 	fs_phongTexture: 'shader/phongTexture.fs.glsl',
 	floortexture: 'models/grass.png',
+	heightmap: 'models/Heightmap.png',
 	vs_single: 'shader/single.vs.glsl',
 	fs_single: 'shader/single.fs.glsl',
 
@@ -351,7 +353,6 @@ function init(resources) {
               ));
 
 
-
 //	var shaderTexture = new ShaderSGNode(createProgram(gl, resources.vs_phongTexture, resources.fs_phongTexture),[floor]);
 
 
@@ -433,6 +434,13 @@ function initTextures(resources)
     resources.floortexture); //actual image data
   //clean up/unbind texture
   gl.bindTexture(gl.TEXTURE_2D, null);
+
+	//heightmap
+	heightmap = gl.createTexture();
+
+	gl.activeTexture(gl.TEXTURE1);
+	gl.bindTexture(gl.TEXTURE_2D, heightmap);
+
 }
 
 // copied from exercise 4 might need to be adjusted
@@ -674,6 +682,7 @@ function createSoldier(rootNode) {
  * render one frame
  */
 function render(timeInMilliseconds) {
+	
 	checkForWindowResize(gl);
 
 	//set background color to light gray
