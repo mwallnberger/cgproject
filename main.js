@@ -14,8 +14,15 @@ const camera = {
 	rotation: {
 		x: 0,
 		y: 0
+	},
+	position: {
+		x: 0,
+		y: 0,
+		z: 0
 	}
 };
+
+var userControlled = false;
 
 //rendering context
 var context;
@@ -482,6 +489,34 @@ function initInteraction(canvas) {
 		mouse.leftButtonDown = false;
 	});
 
+	document.addEventListener('keydown', function(e) {
+
+		var delta = 0.1;
+		if (event.code === 'KeyC')
+		{
+			userControlled = !userControlled;
+		}
+
+		if (event.code === 'ArrowDown')
+		{
+			camera.position.x += delta;
+		}
+		if (event.code === 'ArrowUp')
+		{
+			camera.position.x -= delta;
+		}
+
+		if (event.code === 'ArrowLeft')
+		{
+      camera.position.y += delta;
+		}
+
+		if (event.code === 'ArrowRight')
+		{
+			camera.position.y -= delta;
+		}
+}, true);
+
 	//register a key handler to reset camera
 	document.addEventListener('keypress', function(event) {
 		if (event.code === 'KeyR') { //reset camera rotation
@@ -682,7 +717,7 @@ function createSoldier(rootNode) {
  * render one frame
  */
 function render(timeInMilliseconds) {
-	
+
 	checkForWindowResize(gl);
 
 	//set background color to light gray
@@ -743,42 +778,42 @@ function render(timeInMilliseconds) {
 
 	context.projectionMatrix = mat4.perspective(mat4.create(), glm.deg2rad(30), gl.drawingBufferWidth / gl.drawingBufferHeight, 0.01, 100);
 
-  displayText('Special Effect');
+	// Switch between Animated Camera Flight and User Controlled Mode
+	if(userControlled)
+	{
+		displayText("User Controlled");
 
-  //MODE
-//  context.viewMatrix = mat4.lookAt(mat4.create(), [4, 2, 0], [0, 0.5, 0], [0, 1, 0]);
+  	context.viewMatrix = mat4.lookAt(mat4.create(), [4, 2, 0], [0, 0.5, 0], [0, 1, 0]);
 
-	switch (true) {
-		case (timeInMilliseconds < 8000):
-			context.viewMatrix = mat4.lookAt(mat4.create(), [0, 1, -0], [-0.0001 * timeInMilliseconds + 7, 0, 0], [0, 1, 0]);
-			break;
-		case (timeInMilliseconds < 16000):
-			context.viewMatrix = mat4.lookAt(mat4.create(), [4, 2, 0], [0, 0.5, 0], [0, 1, 0]);
-			break;
-		case (timeInMilliseconds < 24000):
-			context.viewMatrix = mat4.lookAt(mat4.create(), [0, 25, 1], [0, 0, 0], [0, 1, 0]);
-			break;
-		case (timeInMilliseconds < 28000):
-			context.viewMatrix = mat4.lookAt(mat4.create(), [-10, 2, -4], [-0.00028 * timeInMilliseconds + 6, 0, 0], [0, 1, 0]);
-			break;
-		default:
-			context.viewMatrix = mat4.lookAt(mat4.create(), [0, 30, 1], [0, 0, 0], [0, 1, 0]);
-			break;
-	}
-
-
-
-	context.sceneMatrix = mat4.multiply(mat4.create(),
+		context.sceneMatrix = mat4.multiply(mat4.create(),
 		glm.rotateY(camera.rotation.x),
 		glm.rotateX(camera.rotation.y));
+	// Camera movement  x and z
+		context.sceneMatrix = mat4.multiply(mat4.create(),context.sceneMatrix, glm.translate(camera.position.x,0,camera.position.y));
+	}
+	else
+	{
+		displayText('Animated Camera Flight');
 
 
-
-
-
-
-
-
+		switch (true) {
+			case (timeInMilliseconds < 8000):
+				context.viewMatrix = mat4.lookAt(mat4.create(), [0, 1, -0], [-0.0001 * timeInMilliseconds + 7, 0, 0], [0, 1, 0]);
+				break;
+			case (timeInMilliseconds < 16000):
+				context.viewMatrix = mat4.lookAt(mat4.create(), [4, 2, 0], [0, 0.5, 0], [0, 1, 0]);
+				break;
+			case (timeInMilliseconds < 24000):
+				context.viewMatrix = mat4.lookAt(mat4.create(), [0, 25, 1], [0, 0, 0], [0, 1, 0]);
+				break;
+			case (timeInMilliseconds < 28000):
+				context.viewMatrix = mat4.lookAt(mat4.create(), [-10, 2, -4], [-0.00028 * timeInMilliseconds + 6, 0, 0], [0, 1, 0]);
+				break;
+			default:
+				context.viewMatrix = mat4.lookAt(mat4.create(), [0, 30, 1], [0, 0, 0], [0, 1, 0]);
+				break;
+		}
+}
 	if (timeInMilliseconds < 3000000) {
 		//  staticColorShaderNode.render(context);
 		rootNode.render(context);
