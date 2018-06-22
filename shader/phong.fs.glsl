@@ -93,6 +93,7 @@ if(u_enableObjectTexture)
   textureColor =  texture2D(u_tex, v_texCoord); //replace me for TASK 1 and remove me for TASK 2!!!
 }
 
-	gl_FragColor = calculateSimplePointLight(u_light, u_material, v_lightVec, v_normalVec, v_eyeVec,textureColor);
+	gl_FragColor = calculateSimplePointLight(u_light, u_material, v_lightVec, v_normalVec, v_eyeVec,textureColor)
+  + calculateSimplePointLight(u_light2, u_material, v_light2Vec, v_normalVec, v_eyeVec, textureColor);
 
 }

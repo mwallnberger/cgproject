@@ -342,6 +342,17 @@ function init(resources) {
 	]);
 	rootNode.append(rotateLight);
 
+	let light2 = new LightNode();
+  light2.uniform = 'u_light2';
+  light2.diffuse = [1, 0, 0, 1];
+  light2.specular = [1, 0, 0, 1];
+  light2.position = [2, -0.5, 0];
+  light2.append(createLightSphere());
+  rotateLight2 = new TransformationSGNode(mat4.create(), [
+      light2
+  ]);
+  rootNode.append(rotateLight2);
+
 	var quadTransformationMatrix = glm.rotateX(90);
 	quadTransformationMatrix = mat4.multiply(mat4.create(), quadTransformationMatrix, glm.translate(0.0, -0.5, 0));
 	quadTransformationMatrix = mat4.multiply(mat4.create(), quadTransformationMatrix, glm.scale(10.5, 10.5, 10.5));
@@ -443,11 +454,12 @@ function initTextures(resources)
   gl.bindTexture(gl.TEXTURE_2D, null);
 
 	//heightmap
+	/*
 	heightmap = gl.createTexture();
 
 	gl.activeTexture(gl.TEXTURE1);
 	gl.bindTexture(gl.TEXTURE_2D, heightmap);
-
+	*/
 }
 
 // copied from exercise 4 might need to be adjusted
@@ -814,6 +826,9 @@ function render(timeInMilliseconds) {
 				break;
 		}
 }
+
+rotateLight2.matrix = glm.rotateY(-timeInMilliseconds*0.1);
+
 	if (timeInMilliseconds < 3000000) {
 		//  staticColorShaderNode.render(context);
 		rootNode.render(context);
